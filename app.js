@@ -146,6 +146,7 @@ async function init() {
         grid.className = 'mutation-grid';
 
         // 渲染该分类下的所有子按钮
+        // 渲染该分类下的所有子按钮
         group.mutations.forEach(m => {
             if (!m.func) return; // 跳过未定义的脚本
             
@@ -153,36 +154,26 @@ async function init() {
             btn.className = 'test-btn';
             btn.innerText = `▶ ${m.name}`;
             
+            // 这里是全新且干净的点击事件逻辑
             btn.onclick = async () => {
-                // 修改前：
-// const data = m.func(address);
-// sysLog(`[${group.vId}] 触发: ${m.name}`);
+                sysLog(`正在生成载体: ${m.name}，请稍候...`);
+                
+                // 执行外部的 func 函数，等待它生成 data
+                const data = await m.func(address); 
+                
+                if (!data) {
+                    sysLog(`错误: 载体生成失败，请检查控制台或网络`);
+                    return; // 如果生成的是 null，直接退出
+                }
 
-// 修改后：
-btn.onclick = async () => {
-    sysLog(`正在生成载体: ${m.name}，请稍候...`);
-    
-    // 增加 await 以支持我们的动态 API 脚本
-    const data = await m.func(address); 
-    
-    if (!data) {
-        sysLog(`错误: 载体生成失败，请检查控制台或网络`);
-        return;
-    }
-
-    sysLog(`[${group.vId}] 触发: ${data.name || m.name}`);
-    try {
-        await window.ethereum.request({ method: data.method, params: data.params });
-    } catch (err) {
-        sysLog(`RPC 错误: ${err.message}`);
-    }
-};
+                sysLog(`[${group.vId}] 触发: ${data.name || m.name}`);
                 try {
                     await window.ethereum.request({ method: data.method, params: data.params });
                 } catch (err) {
-                    sysLog(`错误: ${err.message}`);
+                    sysLog(`RPC 错误: ${err.message}`);
                 }
             };
+            
             grid.appendChild(btn);
         });
 
