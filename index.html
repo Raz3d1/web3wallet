@@ -19,8 +19,21 @@
     <script src="fixtures/V6/Seaport14.js"></script>
     <script src="fixtures/V6/LooksRare.js"></script>
     <script src="fixtures/V8/SuspectedScam.js"></script>
+    
     <style>
-    body { background: #f4f7f6; padding: 10px; }
+    /* 增加基础字体设置，让移动端显示更现代 */
+    body { background: #f4f7f6; padding: 15px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    
+    /* --- 新增：主标题样式 --- */
+    .page-title { 
+        text-align: center; 
+        color: #1a73e8; 
+        font-size: 22px; 
+        font-weight: bold; 
+        margin-top: 10px;
+        margin-bottom: 20px; 
+    }
+
     .v-section { margin-bottom: 20px; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 15px; }
     .v-title { 
         font-size: 18px; font-weight: bold; color: #1a73e8; 
@@ -37,9 +50,12 @@
     </style>
 </head>
 <body>
+    <h1 class="page-title">web3wallet自动化测试</h1>
+
     <div id="test-container" class="btn-list">
         </div>
-    <div id="log-panel" style="background:#000; color:#0f0; height:200px; overflow:auto; padding:10px; font-size:12px;"></div>
+    
+    <div id="log-panel"></div>
 
     <script src="app.js"></script>
 </body>
