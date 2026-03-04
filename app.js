@@ -100,7 +100,7 @@ const testSuite = [
         { 
             name: "动态 API 首尾相似投毒", 
             // 注意这里无需 await，直接把函数传进去，点击时才执行
-            func: (addr) => typeof v13_DynamicPoisoningGenerator !== 'undefined' ? v13_DynamicPoisoningGenerator(addr) : null 
+            func: (addr) => typeof v13_MainnetDynamicPoisoningGenerator !== 'undefined' ? v13_MainnetDynamicPoisoningGenerator(addr) : null 
         }
     ]
 }
@@ -145,7 +145,6 @@ async function init() {
         const grid = document.createElement('div');
         grid.className = 'mutation-grid';
 
-        // 渲染该分类下的所有子按钮
         // 渲染该分类下的所有子按钮
         group.mutations.forEach(m => {
             if (!m.func) return; // 跳过未定义的脚本

@@ -1,6 +1,6 @@
 // fixtures/v13/MainnetDynamicPoisoning.js
 
-async function v13_MainnetDynamicPoisoningGenerator(address) {
+/*async function v13_MainnetDynamicPoisoningGenerator(address) {
     // 切换为以太坊主网 (Mainnet) 的 Etherscan API
     const apiKey = 'E5KWDCYQ1W9JQZ8V1MC192RXDX4YXASGSW'; 
     const url = `https://api.etherscan.io/api?module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&page=1&offset=10&sort=desc&apikey=${apiKey}`;
@@ -49,4 +49,28 @@ async function v13_MainnetDynamicPoisoningGenerator(address) {
         console.error("生成主网投毒载体失败:", error.message);
         return null;
     }
+}*/
+// fixtures/v13/MainnetDynamicPoisoning.js
+
+// 尽管名字叫 Dynamic，但我们直接把它改成离线静态生成，绕过网络拦截
+function v13_MainnetDynamicPoisoningGenerator(address) {
+    // 假设这是你经常交互的真实安全地址 (Vitalik 的地址)
+    const targetAddress = "0x17eed3ad6051F833A7D0Ccd0E5a973dFe4EBa702";
+    
+    // 核心：强行伪造首尾相似地址 (前6位后4位相同，中间全换成8)
+    const prefix = targetAddress.slice(0, 6);   // 0xd8dA
+    const suffix = targetAddress.slice(-4);     // 6045
+    const fakeMiddle = "8".repeat(32);          // 中间32位全换成8
+    const spoofedAddress = prefix + fakeMiddle + suffix;
+
+    return {
+        id: 'V13_Offline_Poisoning',
+        name: `首尾相似投毒 (离线静态)`,
+        method: 'eth_sendTransaction',
+        params: [{
+            from: address,
+            to: spoofedAddress, // 直接弹出转账给伪造地址的页面
+            value: "0x0" 
+        }]
+    };
 }
