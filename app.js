@@ -93,6 +93,17 @@ const testSuite = [
             { name: "Revoke.cash 恶意转账样例", func: typeof SendEthFixture !== 'undefined' ? SendEthFixture : null }
         ]
     },
+    {
+    vId: "V13",
+    title: "视觉显示与欺骗 (Visual Misleading)",
+    mutations: [
+        { 
+            name: "动态 API 首尾相似投毒", 
+            // 注意这里无需 await，直接把函数传进去，点击时才执行
+            func: (addr) => typeof v13_DynamicPoisoningGenerator !== 'undefined' ? v13_DynamicPoisoningGenerator(addr) : null 
+        }
+    ]
+}
     // 可以继续添加更多版本和测试项
 ];
 
@@ -143,8 +154,29 @@ async function init() {
             btn.innerText = `▶ ${m.name}`;
             
             btn.onclick = async () => {
-                const data = m.func(address);
-                sysLog(`[${group.vId}] 触发: ${m.name}`);
+                // 修改前：
+// const data = m.func(address);
+// sysLog(`[${group.vId}] 触发: ${m.name}`);
+
+// 修改后：
+btn.onclick = async () => {
+    sysLog(`正在生成载体: ${m.name}，请稍候...`);
+    
+    // 增加 await 以支持我们的动态 API 脚本
+    const data = await m.func(address); 
+    
+    if (!data) {
+        sysLog(`错误: 载体生成失败，请检查控制台或网络`);
+        return;
+    }
+
+    sysLog(`[${group.vId}] 触发: ${data.name || m.name}`);
+    try {
+        await window.ethereum.request({ method: data.method, params: data.params });
+    } catch (err) {
+        sysLog(`RPC 错误: ${err.message}`);
+    }
+};
                 try {
                     await window.ethereum.request({ method: data.method, params: data.params });
                 } catch (err) {
