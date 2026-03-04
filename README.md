@@ -1,1 +1,1 @@
-web3wallet-git-main-imzhzhuoli-9477s-projects.vercel.app
+web3wallet-inky.vercel.app
