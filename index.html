@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web3 自动化测试框架</title>
+    <script src="ethers.js"></script>
+    <script src="fixtures/DaiPermit.js"></script>
+    <script src="fixtures/SendEth.js"></script>
+    <script src="fixtures/V3/EthSign.js"></script>
+    <script src="fixtures/V3/PersonalSign.js"></script>
+    <script src="fixtures/V3/HexEncodedHash.js"></script>
+    <script src="fixtures/V5/Approve.js"></script>
+    <script src="fixtures/V5/IncreaseAllowance.js"></script>
+    <script src="fixtures/V5/SetApprovalForAll.js"></script>
+    <script src="fixtures/V6/Blur.js"></script>
+    <script src="fixtures/V6/BlurBulk.js"></script>
+    <script src="fixtures/V6/Seaport1.js"></script>
+    <script src="fixtures/V6/Seaport14.js"></script>
+    <script src="fixtures/V6/LooksRare.js"></script>
+    <script src="fixtures/V8/SuspectedScam.js"></script>
+    <style>
+    body { background: #f4f7f6; padding: 10px; }
+    .v-section { margin-bottom: 20px; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 15px; }
+    .v-title { 
+        font-size: 18px; font-weight: bold; color: #1a73e8; 
+        border-bottom: 2px solid #e8f0fe; padding-bottom: 8px; margin-bottom: 12px; 
+    }
+    .mutation-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+    .test-btn { 
+        padding: 12px; background: #fff; border: 1px solid #1a73e8; 
+        color: #1a73e8; border-radius: 6px; font-weight: 500; text-align: left;
+        transition: all 0.2s;
+    }
+    .test-btn:active { background: #1a73e8; color: white; }
+    .log-panel { background: #000; color: #0f0; padding: 10px; border-radius: 8px; height: 180px; overflow-y: auto; font-family: monospace; font-size: 11px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div id="test-container" class="btn-list">
+        </div>
+    <div id="log-panel" style="background:#000; color:#0f0; height:200px; overflow:auto; padding:10px; font-size:12px;"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
