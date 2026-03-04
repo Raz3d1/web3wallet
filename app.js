@@ -12,9 +12,9 @@ const testSuite = [
     },
     {
         vId: "V4",
-        title: "签名请求测试 (Signature Requests)",
+        title: "非严格输入数据 (Non-rigorous Input Data)",
         mutations: [
-            { name: "ERC20 授权签名", func: typeof v4_DaiPermitFixture !== 'undefined' ? v4_DaiPermitFixture : null }
+            { name: "非严格输入数据", func: typeof v4_Non_rigorousInputdataFixture !== 'undefined' ? v4_Non_rigorousInputdataFixture : null }
         ]
     },
     {
@@ -38,12 +38,15 @@ const testSuite = [
         ]
     },
     {
-        vId: "V7",
-        title: "危险地址交互 (Dangerous Address)",
-        mutations: [
-            { name: "Revoke.cash 恶意转账样例", func: typeof v7_SendEthFixture !== 'undefined' ? v7_SendEthFixture : null }
-        ]
-    },
+    vId: "V7",
+    title: "危险地址交互 (Dangerous Address)",
+    mutations: [
+        // 替换为你从 ScamSniffer 获取的真实钓鱼地址
+        { name: "ScamSniffer 标记钓鱼地址", func: (addr) => v7_KnownDangerousGenerator(addr, '0x164e84226882c385940134f5b292cb89bc4feed6', 'ScamSniffer 标记钓鱼地址') },
+        // 替换为你从 Etherscan 获取的黑客地址
+        { name: "Etherscan 标记黑客地址", func: (addr) => v7_KnownDangerousGenerator(addr, '0x057a3B930702c30E73c309b38A39fD54B468fD83', 'Etherscan 标记黑客地址') }
+    ]
+},
        {
         vId: "V8",
         title: "欺诈性函数名 (Suspected Scams)",
