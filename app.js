@@ -6,7 +6,6 @@ const testSuite = [
         title: "危险的eth_sign (Dangerous eth_sign)",
         mutations: [
             { name: "危险的 eth_sign", func: typeof v3_EthSignFixture !== 'undefined' ? v3_EthSignFixture : null },
-            { name: "个人签名", func: typeof v3_PersonalSignFixture !== 'undefined' ? v3_PersonalSignFixture : null },
             { name: "未解码的hex eth_sign", func: typeof v3_HexEncodedHashFixture !== 'undefined' ? v3_HexEncodedHashFixture : null }
         ]
     },
@@ -41,9 +40,9 @@ const testSuite = [
     vId: "V7",
     title: "危险地址交互 (Dangerous Address)",
     mutations: [
-        // 替换为你从 ScamSniffer 获取的真实钓鱼地址
+        // ScamSniffer 获取的真实钓鱼地址
         { name: "ScamSniffer 标记钓鱼地址", func: (addr) => v7_KnownDangerousGenerator(addr, '0x164e84226882c385940134f5b292cb89bc4feed6', 'ScamSniffer 标记钓鱼地址') },
-        // 替换为你从 Etherscan 获取的黑客地址
+        // Etherscan 获取的黑客地址
         { name: "Etherscan 标记黑客地址", func: (addr) => v7_KnownDangerousGenerator(addr, '0x057a3B930702c30E73c309b38A39fD54B468fD83', 'Etherscan 标记黑客地址') }
     ]
 },
@@ -63,7 +62,6 @@ const testSuite = [
                 name: "ClaimReward()", 
                 func: (addr) => v8_SuspectedScamGenerator(addr, '0x00000f312c54d0dd25888ee9cdc3dee988700000', '0x9c9316c5', 'ClaimReward()') 
             },
-            // 按照这个格式继续添加剩下的 Claim(), claim() 等项
             { 
                 name: "Claim()", 
                 func: (addr) => v8_SuspectedScamGenerator(addr, '0x0f56CcEB1A2dC1a598bb14d7121525dB2C05a7c5', '0x3158952e', 'Claim()') 
@@ -80,27 +78,30 @@ const testSuite = [
     },
     {
         vId: "V9",
-        title: "授权风险 (Approval Risk)",
+        title: "非预期的授权 (Unexpected Authorizations)",
         mutations: [
-            { name: "DAI Permit 离线授权", func: typeof DaiPermitFixture !== 'undefined' ? DaiPermitFixture : null },
-            { name: "ERC20 无限授权 (Standard)", func: typeof SendEthFixture !== 'undefined' ? SendEthFixture : null }
+            { name: "合约与网络不一致的 Permit 签名 (Permit Signature with Mismatched Contract and Network)", func: typeof v9_PermitFixture !== 'undefined' ? v9_PermitFixture : null },
+            { name: "知名合约伪造的欺诈合约授权 (Fraudulent Contract Authorization Mimicking a Known Contract)", func: typeof v9_PermitForAllFixture !== 'undefined' ? v9_PermitForAllFixture : null },
+            { name: "Seaport 合约欺诈订单签名 (Seaport Contract Fraud Order Signature)", func: typeof v9_Seaport1_2Fixture !== 'undefined' ? v9_Seaport1_2Fixture : null },
+            { name: "Seaport 跨链订单签名 (Seaport Cross-Chain Order Signature)", func: typeof v9_Seaport1_1Fixture !== 'undefined' ? v9_Seaport1_1Fixture : null }
         ]
     },
     {
         vId: "V10",
-        title: "危险地址交互 (Dangerous Address)",
+        title: "不全面的personal_sign签名方法校验 (Inadequate personal_sign Validation)",
         mutations: [
-            { name: "Revoke.cash 恶意转账样例", func: typeof SendEthFixture !== 'undefined' ? SendEthFixture : null }
+            { name: "Personal Sign 挑战数据损坏 (Personal Sign with Corrupted Challenge)", func: typeof v10_PersonalSignCorruptedChallengeFixture !== 'undefined' ? v10_PersonalSignCorruptedChallengeFixture : null },
+            { name: "Personal Sign 参数顺序颠倒 (Personal Sign with Swapped Parameters)", func: typeof v10_PersonalSignSwappedParamsFixture !== 'undefined' ? v10_PersonalSignSwappedParamsFixture : null }
         ]
     },
     {
-    vId: "V13",
+    vId: "V14",
     title: "视觉显示与欺骗 (Visual Misleading)",
     mutations: [
         { 
             name: "动态 API 首尾相似投毒", 
             // 注意这里无需 await，直接把函数传进去，点击时才执行
-            func: (addr) => typeof v13_MainnetDynamicPoisoningGenerator !== 'undefined' ? v13_MainnetDynamicPoisoningGenerator(addr) : null 
+            func: (addr) => typeof v14_MainnetDynamicPoisoningGenerator !== 'undefined' ? v14_MainnetDynamicPoisoningGenerator(addr) : null 
         }
     ]
 }
