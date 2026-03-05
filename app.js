@@ -1,4 +1,4 @@
-// app.js
+//// app.js
 //顶部的配置区
 const testSuite = [
     {
