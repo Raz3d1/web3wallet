@@ -1,3 +1,4 @@
+// Blur 挂单签名样例，实际金额远高于挂单金额，但可能由于UI设计不当被用户忽略，导致用户以为自己签署了无关紧要的订单，实际是授权一个高价订单
 function v6_BlurFixture(address) {
     return {
         id: 'V6_Blur',
@@ -45,8 +46,8 @@ function v6_BlurFixture(address) {
         trader: address,
         side: '1',
         matchingPolicy: '0x00000000006411739da1c40b106f8511de5d1fac',
-        collection: '0x2ad0ed1621eaab92c71f53dde4baba88e5c0bc44',
-        tokenId: '1055',
+        collection: '0xbd3531da5cf5857e7cfaa92426877b022e612cf8',
+        tokenId: '7971',
         amount: '1',
         paymentToken: '0x0000000000000000000000000000000000000000',
         price: '100000000000000000',

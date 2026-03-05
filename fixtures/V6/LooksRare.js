@@ -39,9 +39,9 @@ function v6_LooksRareFixture(address) {
       message: {
         isOrderAsk: true,
         signer: address,
-        collection: '0x31385d3520bced94f77aae104b406994d8f2168c',
+        collection: '0x0C58Ef43fF3032005e472cB5709f8908aCb00205',
         price: '1000000000000000000',
-        tokenId: '2369',
+        tokenId: '69',
         amount: '1',
         strategy: '0x56244bb70cbd3ea9dc8007399f61dfc065190031',
         currency: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',

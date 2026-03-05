@@ -51,7 +51,7 @@ function v6_Seaport1Fixture(address) {
       primaryType: 'OrderComponents',
       message: {
         offerer: address,
-        zone: '0x004c00500000ad104d7dbd00e3ae0a5c00560c00',
+        zone: '0x004c00500000ad104d7dbd00e3ae0a5c00560c00',//是否为白名单zone
         offer: [
           {
             itemType: '2',

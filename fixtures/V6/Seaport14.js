@@ -1,3 +1,4 @@
+//应该识别到三个订单，并且只有第一个订单为正常订单，第二个和第三个均为零收入订单，第四个订单为无效订单
 function v6_Seaport14Fixture(address) {
     return {
         id: 'V6_Seaport14',
@@ -13,7 +14,7 @@ function v6_Seaport14Fixture(address) {
           { name: 'chainId', type: 'uint256' },
           { name: 'verifyingContract', type: 'address' },
         ],
-        BulkOrder: [{ name: 'tree', type: 'OrderComponents[2][2]' }],
+        BulkOrder: [{ name: 'tree', type: 'OrderComponents[2][2]' }],//二维树，那么就是说应该有四个订单
         OrderComponents: [
           { name: 'offerer', type: 'address' },
           { name: 'zone', type: 'address' },
@@ -48,7 +49,7 @@ function v6_Seaport14Fixture(address) {
         name: 'Seaport',
         version: '1.4',
         chainId: '1',
-        verifyingContract: '0x00000000000001ad428e4906aE43D8F9852d0dD6',
+        verifyingContract: '0x00000000000001ad428e4906aE43D8F9852d0dD6',// Seaport14 的主合约地址
       },
       message: {
         tree: [
