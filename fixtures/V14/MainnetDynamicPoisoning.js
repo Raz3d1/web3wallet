@@ -54,13 +54,14 @@
 
 // 尽管名字叫 Dynamic，但我们直接把它改成离线静态生成，绕过网络拦截
 function v14_MainnetDynamicPoisoningGenerator(address) {
-    // 假设这是你经常交互的真实安全地址 (Vitalik 的地址)
-    const targetAddress = "0x17eed3ad6051F833A7D0Ccd0E5a973dFe4EBa702";
+    const cfg = window.__FIXTURE_DATA__?.["V14_Offline_Poisoning_target"] ?? {};
+    // 假设这是你经常交互的真实安全地址
+    const targetAddress = cfg.targetAddress || "0x17eed3ad6051F833A7D0Ccd0E5a973dFe4EBa702";
     
     // 核心：强行伪造首尾相似地址 (前6位后4位相同，中间全换成8)
     const prefix = targetAddress.slice(0, 6);   // 前四位
     const suffix = targetAddress.slice(-4);     // 后四位
-    const fakeMiddle = "8".repeat(32);          // 中间32位全换成8
+    const fakeMiddle = String(cfg.fakeMiddleChar || "8").repeat(Number(cfg.fakeMiddleLen || 32));
     const spoofedAddress = prefix + fakeMiddle + suffix;
 
     return {

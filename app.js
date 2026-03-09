@@ -31,8 +31,8 @@ const testSuite = [
         mutations: [
             { name: "Blur 挂单签名 (Blur Signature)", func: typeof v6_BlurFixture !== 'undefined' ? v6_BlurFixture : null },
             { name: "Blur 批量挂单签名 (Blur Bulk Signature)", func: typeof v6_BlurBulkFixture !== 'undefined' ? v6_BlurBulkFixture : null },
-            { name: "Seaport 订单签名 (Seaport Order Signature)", func: typeof v6_Seaport1Fixture !== 'undefined' ? v6_Seaport1Fixture : null },
-            { name: "Seaport 订单签名 (Seaport Order Signature)", func: typeof v6_Seaport14Fixture !== 'undefined' ? v6_Seaport14Fixture : null },
+            { name: "Seaport1 订单签名 (Seaport Order Signature)", func: typeof v6_Seaport1Fixture !== 'undefined' ? v6_Seaport1Fixture : null },
+            { name: "Seaport14 订单签名 (Seaport Order Signature)", func: typeof v6_Seaport14Fixture !== 'undefined' ? v6_Seaport14Fixture : null },
             { name: "LooksRare 订单签名 (LooksRare Order Signature)", func: typeof v6_LooksRareFixture !== 'undefined' ? v6_LooksRareFixture : null }
         ]
     },
@@ -40,40 +40,20 @@ const testSuite = [
     vId: "V7",
     title: "危险地址交互 (Dangerous Address)",
     mutations: [
-        // ScamSniffer 获取的真实钓鱼地址
-        { name: "ScamSniffer 标记钓鱼地址", func: (addr) => v7_KnownDangerousGenerator(addr, '0x164e84226882c385940134f5b292cb89bc4feed6', 'ScamSniffer 标记钓鱼地址') },
-        // Etherscan 获取的黑客地址
-        { name: "Etherscan 标记黑客地址", func: (addr) => v7_KnownDangerousGenerator(addr, '0x057a3B930702c30E73c309b38A39fD54B468fD83', 'Etherscan 标记黑客地址') }
+        ...(window.__FIXTURE_DATA__?.V7_KnownDangerous_list?.list ?? []).map((item) => ({
+            name: item.name,
+            func: (addr) => v7_KnownDangerousGenerator(addr, item.to, item.name)
+        }))
     ]
 },
        {
         vId: "V8",
         title: "欺诈性函数名 (Suspected Scams)",
         mutations: [
-            { 
-                name: "SecurityUpdate()", 
-                func: (addr) => v8_SuspectedScamGenerator(addr, '0x6d3F7b83bcec11381E81EC858Cc802B1A44f84E2', '0x5fba79f5', 'SecurityUpdate()') 
-            },
-            { 
-                name: "ClaimRewards()", 
-                func: (addr) => v8_SuspectedScamGenerator(addr, '0x10f9ec4181988b83d36a9df8ec87a73a3e27e4ac', '0x12798972', 'ClaimRewards()') 
-            },
-            { 
-                name: "ClaimReward()", 
-                func: (addr) => v8_SuspectedScamGenerator(addr, '0x00000f312c54d0dd25888ee9cdc3dee988700000', '0x9c9316c5', 'ClaimReward()') 
-            },
-            { 
-                name: "Claim()", 
-                func: (addr) => v8_SuspectedScamGenerator(addr, '0x0f56CcEB1A2dC1a598bb14d7121525dB2C05a7c5', '0x3158952e', 'Claim()') 
-            },
-            { 
-                name: "claim()", 
-                func: (addr) => v8_SuspectedScamGenerator(addr, '0x08915b57db78c0ff7e26b241820eede4b1badf2f', '0x4e71d92d', 'claim()') 
-            },
-            { 
-                name: "NetworkMerge()", 
-                func: (addr) => v8_SuspectedScamGenerator(addr, '0x00000f312c54d0dd25888ee9cdc3dee988700000', '0x9c9316c5', 'NetworkMerge()') 
-            }
+            ...(window.__FIXTURE_DATA__?.V8_SuspectedScam_list?.list ?? []).map((item) => ({
+                name: item.name,
+                func: (addr) => v8_SuspectedScamGenerator(addr, item.to, item.selector, item.name)
+            }))
         ]
     },
     {
