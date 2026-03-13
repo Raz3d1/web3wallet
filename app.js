@@ -148,7 +148,12 @@ async function init() {
 
                 sysLog(`[${group.vId}] 触发: ${data.name || m.name}`);
                 try {
-                    await window.ethereum.request({ method: data.method, params: data.params });
+                    const provider = window.ethereum;
+                    if (!provider || typeof provider.request !== "function") {
+                        sysLog("错误: 当前钱包未注入 EVM Provider（window.ethereum.request 不存在）。该钱包可能不是 EVM 钱包，或未开启 DApp/以太坊兼容模式。");
+                        return;
+                    }
+                    await provider.request({ method: data.method, params: data.params });
                 } catch (err) {
                     sysLog(`RPC 错误: ${err.message}`);
                 }
