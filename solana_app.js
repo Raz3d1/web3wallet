@@ -60,6 +60,63 @@ async function ensureConnected(provider) {
   }
 }
 
+function _normName(s) {
+  const t = String(s || "").trim();
+  // 去掉括号里的英文解释，方便匹配
+  return t.replace(/\s*\([^)]*\)\s*/g, " ").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+function _findFixtureDataByButtonName(buttonName) {
+  const dict = window.__FIXTURE_DATA__ || {};
+  const target = _normName(buttonName);
+  if (!target) return null;
+  /** @type {any[]} */
+  const values = Object.values(dict);
+
+  // 先做“包含匹配”
+  for (const v of values) {
+    const n = _normName(v?.name);
+    if (!n) continue;
+    if (target.includes(n) || n.includes(target)) return v;
+  }
+  // 再退化：完全等于
+  for (const v of values) {
+    const n = _normName(v?.name);
+    if (n && n === target) return v;
+  }
+  return null;
+}
+
+function _resolveFixtureTemplate(obj, vars) {
+  // 只做本项目用到的 {{address}}/{{from}} 替换，保持与 EVM 版数据结构一致
+  const v = obj;
+  if (v == null) return v;
+  if (typeof v === "string") {
+    return v
+      .replaceAll("{{address}}", vars?.address ?? "")
+      .replaceAll("{{from}}", vars?.from ?? vars?.address ?? "");
+  }
+  if (Array.isArray(v)) return v.map((x) => _resolveFixtureTemplate(x, vars));
+  if (typeof v === "object") {
+    const out = {};
+    for (const [k, val] of Object.entries(v)) out[k] = _resolveFixtureTemplate(val, vars);
+    return out;
+  }
+  return v;
+}
+
+function _buildEvmFixturePayload(buttonName, address) {
+  const fx = _findFixtureDataByButtonName(buttonName);
+  if (!fx) return null;
+  const vars = { address, from: address };
+  return {
+    id: fx.id,
+    name: fx.name,
+    method: fx.method,
+    params: _resolveFixtureTemplate(fx.params, vars),
+  };
+}
+
 async function runSignMessage(name) {
   const provider = getSolanaProvider();
   if (!provider) {
@@ -71,13 +128,22 @@ async function runSignMessage(name) {
   if (pubkey) sysLog(`钱包就绪: ${pubkey}`);
 
   const msgBytes = buildSignMessagePayload(name);
-  sysLog(`触发 signMessage: ${name} (msg_b64=${toBase64FromUtf8(new TextDecoder().decode(msgBytes)).slice(0, 24)}...)`);
+  const evmPayload = _buildEvmFixturePayload(name, pubkey);
+  if (evmPayload) {
+    sysLog(`已加载 EVM 数据源: method=${evmPayload.method}`);
+  } else {
+    sysLog("提示: 未在 fixtures-data 中找到对应条目（将仅签名基础消息）");
+  }
+  sysLog(`触发 signMessage: ${name}`);
   try {
     if (typeof provider.signMessage !== "function") {
       sysLog("错误: 钱包不支持 signMessage");
       return;
     }
-    await provider.signMessage(msgBytes, "utf8");
+    // 把 EVM 版 fixtures 的 method/params 也放进消息中，确保数据源一致
+    const extra = evmPayload ? `\nEVM_FIXTURE=${JSON.stringify(evmPayload)}` : "";
+    const finalBytes = new TextEncoder().encode(new TextDecoder().decode(msgBytes) + extra);
+    await provider.signMessage(finalBytes, "utf8");
     sysLog("signMessage 已触发");
   } catch (err) {
     sysLog(`签名错误: ${err?.message || String(err)}`);
@@ -96,6 +162,12 @@ async function runSignTransaction(name) {
 
   // 这里不引入 @solana/web3.js，避免增加依赖；直接提示用户：
   // 大多数钱包在没有合法 Transaction 对象时会弹错/拒绝，这同样可用于测试“解析能力/风险提示”。
+  const evmPayload = _buildEvmFixturePayload(name, pubkey);
+  if (evmPayload) {
+    sysLog(`已加载 EVM 数据源: method=${evmPayload.method}`);
+  } else {
+    sysLog("提示: 未在 fixtures-data 中找到对应条目（将触发非法 tx 解析流程）");
+  }
   sysLog(`触发 signTransaction: ${name}`);
   try {
     if (typeof provider.signTransaction !== "function") {
@@ -121,6 +193,12 @@ async function runSignAndSendTransaction(name) {
   const pubkey = await ensureConnected(provider);
   if (pubkey) sysLog(`钱包就绪: ${pubkey}`);
 
+  const evmPayload = _buildEvmFixturePayload(name, pubkey);
+  if (evmPayload) {
+    sysLog(`已加载 EVM 数据源: method=${evmPayload.method}`);
+  } else {
+    sysLog("提示: 未在 fixtures-data 中找到对应条目（将触发非法 tx 解析流程）");
+  }
   sysLog(`触发 signAndSendTransaction: ${name}`);
   try {
     if (typeof provider.signAndSendTransaction !== "function") {
