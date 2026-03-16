@@ -134,27 +134,115 @@ async function runSignAndSendTransaction(name) {
   }
 }
 
+function _pickSolanaTriggerByName(name) {
+  const t = (name || "").toLowerCase();
+  // 更像“交易/授权/交互”的按钮，优先触发交易签名类（更接近钱包交易弹窗）
+  const txHints = [
+    "approve", "allowance", "permit", "seaport", "blur", "looksrare",
+    "授权", "交易", "转账", "挂单", "订单", "permit", "nft",
+    "危险地址", "钓鱼", "scam", "poison",
+  ];
+  if (txHints.some((k) => t.includes(k))) return "tx";
+  // 其它更像纯签名/消息
+  return "msg";
+}
+
+async function runCase(name) {
+  const kind = _pickSolanaTriggerByName(name);
+  if (kind === "tx") {
+    // 优先 signAndSend（若钱包不支持会在内部提示），否则 fallback signTransaction
+    const provider = getSolanaProvider();
+    if (provider && typeof provider.signAndSendTransaction === "function") {
+      await runSignAndSendTransaction(name);
+      return;
+    }
+    await runSignTransaction(name);
+    return;
+  }
+  await runSignMessage(name);
+}
+
+// 将 EVM 版的所有测试项“搬到” Solana 版：按钮名称/顺序保持一致，
+// 但执行动作改为 Solana 的 signMessage / signTransaction / signAndSendTransaction。
 const testSuite = [
   {
-    vId: "S1",
-    title: "危险/混淆签名 (Solana SignMessage)",
+    vId: "V3",
+    title: "危险的eth_sign (Dangerous eth_sign)",
     mutations: [
-      { name: "SignMessage: 随机挑战字符串", run: () => runSignMessage("随机挑战字符串") },
-      { name: "SignMessage: 伪装成网站登录确认", run: () => runSignMessage("伪装成网站登录确认") },
+      { name: "危险的 eth_sign", run: () => runCase("危险的 eth_sign") },
+      { name: "未解码的hex eth_sign", run: () => runCase("未解码的hex eth_sign") },
     ],
   },
   {
-    vId: "S2",
-    title: "交易签名解析能力 (Solana signTransaction)",
+    vId: "V4",
+    title: "非严格输入数据 (Non-rigorous Input Data)",
     mutations: [
-      { name: "signTransaction: 非法交易对象(解析失败)", run: () => runSignTransaction("非法交易对象(解析失败)") },
+      { name: "非严格输入数据", run: () => runCase("非严格输入数据") },
     ],
   },
   {
-    vId: "S3",
-    title: "发送交易解析能力 (Solana signAndSendTransaction)",
+    vId: "V5",
+    title: "授权风险 (Overlooked Approval)",
     mutations: [
-      { name: "signAndSend: 非法交易对象(解析失败)", run: () => runSignAndSendTransaction("非法交易对象(解析失败)") },
+      { name: "ERC20 授权 (Standard)", run: () => runCase("ERC20 授权 (Standard)") },
+      { name: "ERC20 增加授权 (Standard)", run: () => runCase("ERC20 增加授权 (Standard)") },
+      { name: "ERC20 无限授权 (Standard)", run: () => runCase("ERC20 无限授权 (Standard)") },
+    ],
+  },
+  {
+    vId: "V6",
+    title: "无利所图的NFT挂单 (Unprofitable NFT Listings)",
+    mutations: [
+      { name: "Blur 挂单签名 (Blur Signature)", run: () => runCase("Blur 挂单签名 (Blur Signature)") },
+      { name: "Blur 批量挂单签名 (Blur Bulk Signature)", run: () => runCase("Blur 批量挂单签名 (Blur Bulk Signature)") },
+      { name: "Seaport1 订单签名 (Seaport Order Signature)", run: () => runCase("Seaport1 订单签名 (Seaport Order Signature)") },
+      { name: "Seaport14 订单签名 (Seaport Order Signature)", run: () => runCase("Seaport14 订单签名 (Seaport Order Signature)") },
+      { name: "LooksRare 订单签名 (LooksRare Order Signature)", run: () => runCase("LooksRare 订单签名 (LooksRare Order Signature)") },
+    ],
+  },
+  {
+    vId: "V7",
+    title: "危险地址交互 (Dangerous Address)",
+    mutations: [
+      ...((window.__FIXTURE_DATA__?.V7_KnownDangerous_list?.list ?? []).map((item) => ({
+        name: item.name,
+        run: () => runCase(item.name),
+      }))),
+    ],
+  },
+  {
+    vId: "V8",
+    title: "欺诈性函数名 (Suspected Scams)",
+    mutations: [
+      ...((window.__FIXTURE_DATA__?.V8_SuspectedScam_list?.list ?? []).map((item) => ({
+        name: item.name,
+        run: () => runCase(item.name),
+      }))),
+    ],
+  },
+  {
+    vId: "V9",
+    title: "非预期的授权 (Unexpected Authorizations)",
+    mutations: [
+      { name: "合约与网络不一致的 Permit 签名 (Permit Signature with Mismatched Contract and Network)", run: () => runCase("合约与网络不一致的 Permit 签名 (Permit Signature with Mismatched Contract and Network)") },
+      { name: "知名合约伪造的欺诈合约授权 (Fraudulent Contract Authorization Mimicking a Known Contract)", run: () => runCase("知名合约伪造的欺诈合约授权 (Fraudulent Contract Authorization Mimicking a Known Contract)") },
+      { name: "Seaport 合约欺诈订单签名 (Seaport Contract Fraud Order Signature)", run: () => runCase("Seaport 合约欺诈订单签名 (Seaport Contract Fraud Order Signature)") },
+      { name: "Seaport 跨链订单签名 (Seaport Cross-Chain Order Signature)", run: () => runCase("Seaport 跨链订单签名 (Seaport Cross-Chain Order Signature)") },
+    ],
+  },
+  {
+    vId: "V10",
+    title: "不全面的personal_sign签名方法校验 (Inadequate personal_sign Validation)",
+    mutations: [
+      { name: "Personal Sign 挑战数据损坏 (Personal Sign with Corrupted Challenge)", run: () => runCase("Personal Sign 挑战数据损坏 (Personal Sign with Corrupted Challenge)") },
+      { name: "Personal Sign 参数顺序颠倒 (Personal Sign with Swapped Parameters)", run: () => runCase("Personal Sign 参数顺序颠倒 (Personal Sign with Swapped Parameters)") },
+    ],
+  },
+  {
+    vId: "V14",
+    title: "视觉显示与欺骗 (Visual Misleading)",
+    mutations: [
+      { name: "动态 API 首尾相似投毒", run: () => runCase("动态 API 首尾相似投毒") },
     ],
   },
 ];
