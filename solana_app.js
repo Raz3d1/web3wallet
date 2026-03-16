@@ -11,11 +11,18 @@ function sysLog(m) {
 }
 
 function getSolanaProvider() {
-  // 通用：很多钱包注入 window.solana；部分钱包还会标记 isPhantom/isSolflare 等
-  const p = window.solana;
-  if (!p) return null;
-  if (typeof p.connect !== "function") return null;
-  return p;
+  // 通用：很多钱包注入 window.solana；Solflare 可能注入 window.solflare
+  /** @type {any[]} */
+  const candidates = [];
+  if (window.solana) candidates.push(window.solana);
+  if (window.solflare) candidates.push(window.solflare);
+
+  for (const p of candidates) {
+    if (!p) continue;
+    // Solana provider 最基础能力：connect
+    if (typeof p.connect === "function") return p;
+  }
+  return null;
 }
 
 function toBase64FromUtf8(s) {
@@ -56,7 +63,7 @@ async function ensureConnected(provider) {
 async function runSignMessage(name) {
   const provider = getSolanaProvider();
   if (!provider) {
-    sysLog("错误: 当前钱包未注入 Solana Provider（window.solana.connect 不存在）。请确认是 Solana 钱包，且已开启 DApp 连接权限。");
+    sysLog("错误: 当前钱包未注入 Solana Provider（window.solana / window.solflare 均不可用）。请确认是 Solana 钱包，且已开启 DApp 连接权限。");
     return;
   }
 
@@ -80,7 +87,7 @@ async function runSignMessage(name) {
 async function runSignTransaction(name) {
   const provider = getSolanaProvider();
   if (!provider) {
-    sysLog("错误: 当前钱包未注入 Solana Provider（window.solana.connect 不存在）。请确认是 Solana 钱包，且已开启 DApp 连接权限。");
+    sysLog("错误: 当前钱包未注入 Solana Provider（window.solana / window.solflare 均不可用）。请确认是 Solana 钱包，且已开启 DApp 连接权限。");
     return;
   }
 
@@ -107,7 +114,7 @@ async function runSignTransaction(name) {
 async function runSignAndSendTransaction(name) {
   const provider = getSolanaProvider();
   if (!provider) {
-    sysLog("错误: 当前钱包未注入 Solana Provider（window.solana.connect 不存在）。请确认是 Solana 钱包，且已开启 DApp 连接权限。");
+    sysLog("错误: 当前钱包未注入 Solana Provider（window.solana / window.solflare 均不可用）。请确认是 Solana 钱包，且已开启 DApp 连接权限。");
     return;
   }
 
