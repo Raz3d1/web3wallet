@@ -19,7 +19,9 @@
   function templateReplaceString(s, vars) {
     return s
       .replaceAll("{{address}}", vars.address ?? "")
-      .replaceAll("{{from}}", vars.from ?? vars.address ?? "");
+      .replaceAll("{{from}}", vars.from ?? vars.address ?? "")
+      .replaceAll("{{rawTxHex}}", vars.rawTxHex ?? "")
+      .replaceAll("{{maxBlockNumber}}", vars.maxBlockNumber ?? "");
   }
 
   function resolveTemplate(value, vars) {

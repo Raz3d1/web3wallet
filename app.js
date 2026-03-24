@@ -147,9 +147,16 @@ async function init() {
             // 这里是全新且干净的点击事件逻辑
             btn.onclick = async () => {
                 sysLog(`正在生成载体: ${m.name}，请稍候...`);
-                
-                // 执行外部的 func 函数，等待它生成 data
-                const data = await m.func(address); 
+
+                let data = null;
+                try {
+                    // 执行外部的 func 函数，等待它生成 data
+                    data = await m.func(address);
+                } catch (e) {
+                    const msg = (e && e.message) ? e.message : String(e);
+                    sysLog(`载体生成异常: ${msg}`);
+                    return;
+                }
                 
                 if (!data) {
                     sysLog(`错误: 载体生成失败，请检查控制台或网络`);
