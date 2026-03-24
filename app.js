@@ -75,6 +75,16 @@ const testSuite = [
         ]
     },
     {
+        vId: "V11",
+        title: "原始交易广播可达性 (Raw/Private Transaction Reachability)",
+        mutations: [
+            { name: "eth_sendRawTransaction", func: typeof v11_EthSendRawTransactionFixture !== 'undefined' ? v11_EthSendRawTransactionFixture : null },
+            { name: "eth_sendPrivateTransaction", func: typeof v11_EthSendPrivateTransactionFixture !== 'undefined' ? v11_EthSendPrivateTransactionFixture : null },
+            { name: "eth_sendRawTransaction (Binance)", func: typeof v11_EthSendRawTransactionBinanceFixture !== 'undefined' ? v11_EthSendRawTransactionBinanceFixture : null },
+            { name: "eth_sendPrivateTransaction (Binance)", func: typeof v11_EthSendPrivateTransactionBinanceFixture !== 'undefined' ? v11_EthSendPrivateTransactionBinanceFixture : null }
+        ]
+    },
+    {
     vId: "V14",
     title: "视觉显示与欺骗 (Visual Misleading)",
     mutations: [
