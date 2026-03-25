@@ -17,11 +17,12 @@
   }
 
   function templateReplaceString(s, vars) {
-    return s
-      .replaceAll("{{address}}", vars.address ?? "")
-      .replaceAll("{{from}}", vars.from ?? vars.address ?? "")
-      .replaceAll("{{rawTxHex}}", vars.rawTxHex ?? "")
-      .replaceAll("{{maxBlockNumber}}", vars.maxBlockNumber ?? "");
+    if (typeof s !== "string" || vars == null) return s;
+    return s.replace(/\{\{(\w+)\}\}/g, (_, key) => {
+      if (Object.prototype.hasOwnProperty.call(vars, key) && vars[key] !== undefined && vars[key] !== null)
+        return String(vars[key]);
+      return "";
+    });
   }
 
   function resolveTemplate(value, vars) {
@@ -58,4 +59,3 @@
     };
   };
 })();
-
