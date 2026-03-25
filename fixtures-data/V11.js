@@ -1,6 +1,69 @@
 // fixtures-data/V11.js — Binance 特供版（标准 EIP-1193 / JSON-RPC 映射版）
 // 说明：此文件用于网页里的 window.ethereum.request，method 需使用钱包可识别的标准名。
 (() => {
+  // ========= Ethereum Provider 请求增强日志（用于定位“无反应/异常”）=========
+  // 原理：monkey patch window.ethereum.request，把 method/params/返回值/异常全部打出来。
+  // 注意：如果 ethereum 尚未注入，会轮询一小段时间，注入后自动生效。
+  const enableEthRequestLoggingOnce = () => {
+    try {
+      if (window.__binance_eth_request_log_enabled) return;
+      if (!window.ethereum || typeof window.ethereum.request !== "function") return;
+
+      window.__binance_eth_request_log_enabled = true;
+
+      const origRequest = window.ethereum.request.bind(window.ethereum);
+
+      const safeStringify = (x) => {
+        const seen = new WeakSet();
+        return JSON.stringify(x, (k, v) => {
+          if (typeof v === "object" && v !== null) {
+            if (seen.has(v)) return "[Circular]";
+            seen.add(v);
+          }
+          return v;
+        });
+      };
+
+      window.ethereum.request = async function (payload) {
+        console.log("[eth-log] ---> request payload:", safeStringify(payload));
+
+        try {
+          const res = await origRequest(payload);
+          console.log("[eth-log] <--- success result:", safeStringify(res));
+          return res;
+        } catch (e) {
+          console.error("[eth-log] <--- ERROR thrown");
+          console.error("[eth-log] error.name:", e && e.name ? e.name : undefined);
+          console.error("[eth-log] error.code:", e && e.code ? e.code : undefined);
+          console.error("[eth-log] error.message:", e && e.message ? e.message : undefined);
+          console.error("[eth-log] error.data:", e && e.data ? e.data : undefined);
+          console.error("[eth-log] error.stack:", e && e.stack ? e.stack : undefined);
+          console.error("[eth-log] payload causing error:", safeStringify(payload));
+          throw e;
+        }
+      };
+
+      window.addEventListener("unhandledrejection", (ev) => {
+        console.error("[eth-log] unhandledrejection:", ev && ev.reason ? ev.reason : ev);
+      });
+      window.addEventListener("error", (ev) => {
+        console.error("[eth-log] window.error:", ev && (ev.error || ev.message) ? (ev.error || ev.message) : ev);
+      });
+
+      console.log("[eth-log] ethereum.request logging enabled.");
+    } catch (e) {
+      console.error("[eth-log] enableEthRequestLoggingOnce failed:", e);
+    }
+  };
+
+  // 先尝试立即启用；若 ethereum 尚未注入，则轮询最多 5 秒。
+  enableEthRequestLoggingOnce();
+  const _t0 = setInterval(() => {
+    enableEthRequestLoggingOnce();
+    if (window.__binance_eth_request_log_enabled) clearInterval(_t0);
+  }, 100);
+  setTimeout(() => clearInterval(_t0), 5000);
+
   const r = window.registerFixtureData;
 
   // 1. requestAccounts -> eth_requestAccounts
