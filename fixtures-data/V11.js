@@ -4,6 +4,60 @@
   // ========= Ethereum Provider 请求增强日志（用于定位“无反应/异常”）=========
   // 原理：monkey patch window.ethereum.request，把 method/params/返回值/异常全部打出来。
   // 注意：如果 ethereum 尚未注入，会轮询一小段时间，注入后自动生效。
+  const ensureDomLog = () => {
+    try {
+      const id = "binance_eth_log_debug";
+      let el = document.getElementById(id);
+      if (!el) {
+        el = document.createElement("div");
+        el.id = id;
+        el.style.position = "fixed";
+        el.style.left = "0";
+        el.style.bottom = "0";
+        el.style.width = "100%";
+        el.style.maxHeight = "35vh";
+        el.style.overflow = "auto";
+        el.style.zIndex = "2147483647";
+        el.style.background = "rgba(0,0,0,0.75)";
+        el.style.color = "#fff";
+        el.style.fontFamily = "monospace";
+        el.style.fontSize = "12px";
+        el.style.padding = "8px 10px";
+        el.style.boxSizing = "border-box";
+        el.style.whiteSpace = "pre-wrap";
+        el.innerText = "[eth-log] debug overlay created.\n";
+        document.body && document.body.appendChild(el);
+      }
+      return el;
+    } catch (_) {
+      return null;
+    }
+  };
+
+  const domLogEl = ensureDomLog();
+  const domLog = (line) => {
+    try {
+      if (domLogEl) {
+        domLogEl.innerText += line + "\n";
+        domLogEl.scrollTop = domLogEl.scrollHeight;
+      }
+    } catch (_) {}
+    try {
+      console.log(line);
+    } catch (_) {}
+  };
+  const domLogErr = (line) => {
+    try {
+      if (domLogEl) {
+        domLogEl.innerText += line + "\n";
+        domLogEl.scrollTop = domLogEl.scrollHeight;
+      }
+    } catch (_) {}
+    try {
+      console.error(line);
+    } catch (_) {}
+  };
+
   const enableEthRequestLoggingOnce = () => {
     try {
       if (window.__binance_eth_request_log_enabled) return;
@@ -14,45 +68,54 @@
       const origRequest = window.ethereum.request.bind(window.ethereum);
 
       const safeStringify = (x) => {
-        const seen = new WeakSet();
-        return JSON.stringify(x, (k, v) => {
-          if (typeof v === "object" && v !== null) {
-            if (seen.has(v)) return "[Circular]";
-            seen.add(v);
+        try {
+          const seen = new WeakSet();
+          return JSON.stringify(x, (k, v) => {
+            if (typeof v === "bigint") return v.toString();
+            if (typeof v === "object" && v !== null) {
+              if (seen.has(v)) return "[Circular]";
+              seen.add(v);
+            }
+            return v;
+          });
+        } catch (e) {
+          try {
+            return String(x);
+          } catch (_) {
+            return "[Unserializable]";
           }
-          return v;
-        });
+        }
       };
 
       window.ethereum.request = async function (payload) {
-        console.log("[eth-log] ---> request payload:", safeStringify(payload));
+        domLog("[eth-log] ---> request payload: " + safeStringify(payload));
 
         try {
           const res = await origRequest(payload);
-          console.log("[eth-log] <--- success result:", safeStringify(res));
+          domLog("[eth-log] <--- success result: " + safeStringify(res));
           return res;
         } catch (e) {
-          console.error("[eth-log] <--- ERROR thrown");
-          console.error("[eth-log] error.name:", e && e.name ? e.name : undefined);
-          console.error("[eth-log] error.code:", e && e.code ? e.code : undefined);
-          console.error("[eth-log] error.message:", e && e.message ? e.message : undefined);
-          console.error("[eth-log] error.data:", e && e.data ? e.data : undefined);
-          console.error("[eth-log] error.stack:", e && e.stack ? e.stack : undefined);
-          console.error("[eth-log] payload causing error:", safeStringify(payload));
+          domLogErr("[eth-log] <--- ERROR thrown");
+          domLogErr("[eth-log] error.name: " + (e && e.name ? e.name : "undefined"));
+          domLogErr("[eth-log] error.code: " + (e && e.code ? e.code : "undefined"));
+          domLogErr("[eth-log] error.message: " + (e && e.message ? e.message : "undefined"));
+          domLogErr("[eth-log] error.data: " + safeStringify(e && e.data ? e.data : undefined));
+          domLogErr("[eth-log] error.stack: " + (e && e.stack ? e.stack : "undefined"));
+          domLogErr("[eth-log] payload causing error: " + safeStringify(payload));
           throw e;
         }
       };
 
       window.addEventListener("unhandledrejection", (ev) => {
-        console.error("[eth-log] unhandledrejection:", ev && ev.reason ? ev.reason : ev);
+        domLogErr("[eth-log] unhandledrejection: " + safeStringify(ev && ev.reason ? ev.reason : ev));
       });
       window.addEventListener("error", (ev) => {
-        console.error("[eth-log] window.error:", ev && (ev.error || ev.message) ? (ev.error || ev.message) : ev);
+        domLogErr("[eth-log] window.error: " + safeStringify(ev && (ev.error || ev.message) ? (ev.error || ev.message) : ev));
       });
 
-      console.log("[eth-log] ethereum.request logging enabled.");
+      domLog("[eth-log] ethereum.request logging enabled.");
     } catch (e) {
-      console.error("[eth-log] enableEthRequestLoggingOnce failed:", e);
+      domLogErr("[eth-log] enableEthRequestLoggingOnce failed: " + (e && e.message ? e.message : String(e)));
     }
   };
 
@@ -62,7 +125,7 @@
     enableEthRequestLoggingOnce();
     if (window.__binance_eth_request_log_enabled) clearInterval(_t0);
   }, 100);
-  setTimeout(() => clearInterval(_t0), 5000);
+  setTimeout(() => clearInterval(_t0), 20000);
 
   const r = window.registerFixtureData;
 
