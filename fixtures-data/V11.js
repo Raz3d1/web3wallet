@@ -157,8 +157,8 @@
         value: "0x0",
         data: "0x",
         gas: "0x5208",
-        // 采用钱包当前网络（日志显示 chainId=56，即 0x38）
-        chainId: "0x38"
+        // 采用钱包当前网络（切到以太坊主网 chainId=1，即 0x1）
+        chainId: "0x1"
       }
     ]
   });
@@ -225,8 +225,8 @@
         gas: "{{gasHex}}",
         gasPrice: "{{gasPriceHex}}",
         nonce: "{{nonceHex}}",
-        // 采用钱包当前网络（日志显示 chainId=56，即 0x38）
-        chainId: "0x38",
+        // 采用钱包当前网络（切到以太坊主网 chainId=1，即 0x1）
+        chainId: "0x1",
       },
     ],
   });
