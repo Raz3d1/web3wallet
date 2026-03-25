@@ -25,7 +25,8 @@
       chainIdHex: "0x1",
       chainIdNum: "1",
       hexMessage: utf8ToHex0x("hello"),
-      unsignedRawTxHex: dummyRaw,
+      unsignedRawTxHex:
+        "0xf86c098504a817c800825208943535353535353535353535353535353535353535880de0b6b3a76400008025a028ef61340bd939bc2195fe537567866003e1a15d3c71ff63e1590620aa636276a067cbe9d8997f761a45711150d4d24da3b6192d6224c65a0e051cefacb7a95781",
       sigHex: dummySig,
       chainName: "Ethereum Mainnet",
       rpcUrl: "https://rpc.ankr.com/eth",
