@@ -19,24 +19,6 @@
     params: [],
   });
 
-  // 3. sendTransaction -> eth_sendTransaction
-  r("Dapp_SendTransaction", {
-    id: "Dapp_SendTransaction",
-    name: "eth_sendTransaction",
-    method: "eth_sendTransaction",
-    params: [
-      {
-        from: "{{from}}",
-        to: "{{to}}",
-        value: "0x0",
-        data: "0x",
-        gas: "0x5208",
-        gasPrice: "0x3b9aca00",
-        chainId: "{{chainIdHex}}"
-      }
-    ]
-  });
-
   // 4. signTransaction -> eth_signTransaction（部分钱包可能不支持）
   r("Dapp_SignTransaction", {
     id: "Dapp_SignTransaction",
@@ -54,54 +36,7 @@
     ]
   });
 
-  // 5. signPersonalMessage -> personal_sign
-  r("Dapp_SignPersonalMessage", {
-    id: "Dapp_SignPersonalMessage",
-    name: "personal_sign",
-    method: "personal_sign",
-    params: ["{{hexMessage}}", "{{address}}"],
-  });
-
-  // 6. signMessage -> eth_sign
-  r("Dapp_SignMessage", {
-    id: "Dapp_SignMessage",
-    name: "eth_sign",
-    method: "eth_sign",
-    params: ["{{address}}", "{{hexMessage}}"],
-  });
-
-  // 7. eth_signTypedData_v4：第二个参数为 typed data JSON 字符串
-  r("Dapp_EthSignTypedData_V4", {
-    id: "Dapp_EthSignTypedData_V4",
-    name: "eth_signTypedData_v4",
-    method: "eth_signTypedData_v4",
-    params: [
-      "{{address}}",
-      {
-        $stringify: {
-          types: {
-            EIP712Domain: [
-              { name: "name", type: "string" },
-              { name: "version", type: "string" },
-              { name: "chainId", type: "uint256" },
-              { name: "verifyingContract", type: "address" },
-            ],
-            Mail: [{ name: "contents", type: "string" }],
-          },
-          primaryType: "Mail",
-          domain: {
-            name: "Fixture",
-            version: "1",
-            chainId: "{{chainIdNum}}",
-            verifyingContract: "0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC",
-          },
-          message: { contents: "hello" },
-        },
-      },
-    ]
-  });
-
-  // 8. signRawTransaction 映射为 eth_sendRawTransaction（广播 raw tx）
+  // 5. signRawTransaction 映射为 eth_sendRawTransaction（广播 raw tx）
   r("Dapp_SignRawTransaction", {
     id: "Dapp_SignRawTransaction",
     name: "eth_sendRawTransaction",
@@ -109,7 +44,7 @@
     params: ["{{unsignedRawTxHex}}"],
   });
 
-  // 9. ecRecover -> personal_ecRecover
+  // 6. ecRecover -> personal_ecRecover
   r("Dapp_EcRecover", {
     id: "Dapp_EcRecover",
     name: "personal_ecRecover",
@@ -117,7 +52,7 @@
     params: ["{{hexMessage}}", "{{sigHex}}"],
   });
 
-  // 10. addEthereumChain -> wallet_addEthereumChain
+  // 7. addEthereumChain -> wallet_addEthereumChain
   r("Dapp_AddEthereumChain", {
     id: "Dapp_AddEthereumChain",
     name: "wallet_addEthereumChain",
@@ -137,11 +72,64 @@
     ]
   });
 
-  // 11. common_json_rpc eth_chainId -> 直接调用 eth_chainId
+  // 8. common_json_rpc eth_chainId -> 直接调用 eth_chainId
   r("Dapp_CommonJsonRpc_eth_chainId", {
     id: "Dapp_CommonJsonRpc_eth_chainId",
     name: "eth_chainId",
     method: "eth_chainId",
     params: [],
+  });
+
+  // EIP-1193：eth_signTransaction（带 value/data/gas/nonce 的更完整参数）
+  r("EIP1193_EthSignTransaction", {
+    id: "EIP1193_EthSignTransaction",
+    name: "eth_signTransaction",
+    method: "eth_signTransaction",
+    params: [
+      {
+        from: "{{address}}",
+        to: "{{to}}",
+
+        // value/data：ERC20 转账通常 data 非空，且 value 可能为 0x0
+        value: "{{valueHex}}",
+        data: "{{dataHex}}",
+
+        // gas/nonce/gasPrice/chainId 按钱包要求提供；有些钱包会自动补全
+        gas: "{{gasHex}}",
+        gasPrice: "{{gasPriceHex}}",
+        nonce: "{{nonceHex}}",
+        chainId: "{{chainIdHex}}",
+      },
+    ],
+  });
+
+  // EIP-1193：eth_accounts（不一定会弹出授权框）
+  r("EIP1193_Accounts", {
+    id: "EIP1193_Accounts",
+    name: "eth_accounts",
+    method: "eth_accounts",
+    params: [],
+  });
+
+  r("EIP1193_SwitchChain", {
+    id: "EIP1193_SwitchChain",
+    name: "wallet_switchEthereumChain",
+    method: "wallet_switchEthereumChain",
+    params: [{ chainId: "{{chainIdHex}}" }],
+  });
+
+  r("EIP1193_WatchAsset", {
+    id: "EIP1193_WatchAsset",
+    name: "wallet_watchAsset",
+    method: "wallet_watchAsset",
+    params: {
+      type: "ERC20",
+      options: {
+        address: "{{tokenAddress}}",
+        symbol: "{{tokenSymbol}}",
+        decimals: 18,
+        image: "{{tokenImage}}",
+      },
+    },
   });
 })();

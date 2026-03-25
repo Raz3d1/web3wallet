@@ -31,6 +31,17 @@
       rpcUrl: "https://rpc.ankr.com/eth",
       explorerUrl: "https://etherscan.io/",
       chainIdentifier: "ethereum",
+      // eth_signTransaction：占位符（用于更完整的 EIP-1193 事务字段）
+      valueHex: "0x0",
+      // 这里用 0x 占位（若钱包/签名器要求 calldata，需改成真实编码后的 data）
+      dataHex: "0x",
+      gasHex: "0x5208",
+      gasPriceHex: "0x3b9aca00",
+      nonceHex: "0x0",
+      // wallet_watchAsset 占位符：ERC20
+      tokenAddress: "0x0000000000000000000000000000000000000001",
+      tokenSymbol: "TKN",
+      tokenImage: "",
     };
   }
 
@@ -42,24 +53,8 @@
     return g.buildFixtureFromData("Dapp_RequestAccounts_Full", ethVars(addr));
   }
 
-  function v11_SendTransactionFixture(addr) {
-    return g.buildFixtureFromData("Dapp_SendTransaction", ethVars(addr));
-  }
-
   function v11_SignTransactionFixture(addr) {
     return g.buildFixtureFromData("Dapp_SignTransaction", ethVars(addr));
-  }
-
-  function v11_SignPersonalMessageFixture(addr) {
-    return g.buildFixtureFromData("Dapp_SignPersonalMessage", ethVars(addr));
-  }
-
-  function v11_SignMessageFixture(addr) {
-    return g.buildFixtureFromData("Dapp_SignMessage", ethVars(addr));
-  }
-
-  function v11_EthSignTypedDataV4Fixture(addr) {
-    return g.buildFixtureFromData("Dapp_EthSignTypedData_V4", ethVars(addr));
   }
 
   function v11_SignRawTransactionFixture(addr) {
@@ -78,25 +73,31 @@
     return g.buildFixtureFromData("Dapp_CommonJsonRpc_eth_chainId", ethVars(addr));
   }
 
-  function buildDappTypedDataV4(address, chainIdNum) {
-    return g.buildFixtureFromData("Dapp_EthSignTypedData_V4", {
-      address,
-      reqId: "1",
-      network: "ethereum",
-      chainIdNum: String(chainIdNum),
-    });
+  function v11_EIP1193_EthSignTransactionFixture(addr) {
+    return g.buildFixtureFromData("EIP1193_EthSignTransaction", ethVars(addr));
+  }
+
+  function v11_EIP1193_AccountsFixture(addr) {
+    return g.buildFixtureFromData("EIP1193_Accounts", ethVars(addr));
+  }
+
+  function v11_EIP1193_SwitchChainFixture(addr) {
+    return g.buildFixtureFromData("EIP1193_SwitchChain", ethVars(addr));
+  }
+
+  function v11_EIP1193_WatchAssetFixture(addr) {
+    return g.buildFixtureFromData("EIP1193_WatchAsset", ethVars(addr));
   }
 
   g.v11_RequestAccountsFixture = v11_RequestAccountsFixture;
   g.v11_RequestAccountsFullFixture = v11_RequestAccountsFullFixture;
-  g.v11_SendTransactionFixture = v11_SendTransactionFixture;
   g.v11_SignTransactionFixture = v11_SignTransactionFixture;
-  g.v11_SignPersonalMessageFixture = v11_SignPersonalMessageFixture;
-  g.v11_SignMessageFixture = v11_SignMessageFixture;
-  g.v11_EthSignTypedDataV4Fixture = v11_EthSignTypedDataV4Fixture;
   g.v11_SignRawTransactionFixture = v11_SignRawTransactionFixture;
   g.v11_EcRecoverFixture = v11_EcRecoverFixture;
   g.v11_AddEthereumChainFixture = v11_AddEthereumChainFixture;
   g.v11_CommonJsonRpcEthChainIdFixture = v11_CommonJsonRpcEthChainIdFixture;
-  g.buildDappTypedDataV4 = buildDappTypedDataV4;
+  g.v11_EIP1193_EthSignTransactionFixture = v11_EIP1193_EthSignTransactionFixture;
+  g.v11_EIP1193_AccountsFixture = v11_EIP1193_AccountsFixture;
+  g.v11_EIP1193_SwitchChainFixture = v11_EIP1193_SwitchChainFixture;
+  g.v11_EIP1193_WatchAssetFixture = v11_EIP1193_WatchAssetFixture;
 })();

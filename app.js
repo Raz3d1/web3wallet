@@ -80,14 +80,14 @@ const testSuite = [
         mutations: [
             { name: "requestAccounts", func: typeof v11_RequestAccountsFixture !== "undefined" ? v11_RequestAccountsFixture : null },
             { name: "requestAccounts (full model)", func: typeof v11_RequestAccountsFullFixture !== "undefined" ? v11_RequestAccountsFullFixture : null },
-            { name: "sendTransaction", func: typeof v11_SendTransactionFixture !== "undefined" ? v11_SendTransactionFixture : null },
             { name: "signTransaction", func: typeof v11_SignTransactionFixture !== "undefined" ? v11_SignTransactionFixture : null },
-            { name: "signPersonalMessage", func: typeof v11_SignPersonalMessageFixture !== "undefined" ? v11_SignPersonalMessageFixture : null },
-            { name: "signMessage", func: typeof v11_SignMessageFixture !== "undefined" ? v11_SignMessageFixture : null },
-            { name: "eth_signTypedData_v4", func: typeof v11_EthSignTypedDataV4Fixture !== "undefined" ? v11_EthSignTypedDataV4Fixture : null },
+            { name: "eth_signTransaction (EIP1193)", func: typeof v11_EIP1193_EthSignTransactionFixture !== "undefined" ? v11_EIP1193_EthSignTransactionFixture : null },
             { name: "signRawTransaction", func: typeof v11_SignRawTransactionFixture !== "undefined" ? v11_SignRawTransactionFixture : null },
             { name: "ecRecover", func: typeof v11_EcRecoverFixture !== "undefined" ? v11_EcRecoverFixture : null },
             { name: "addEthereumChain", func: typeof v11_AddEthereumChainFixture !== "undefined" ? v11_AddEthereumChainFixture : null },
+            { name: "wallet_switchEthereumChain", func: typeof v11_EIP1193_SwitchChainFixture !== "undefined" ? v11_EIP1193_SwitchChainFixture : null },
+            { name: "wallet_watchAsset", func: typeof v11_EIP1193_WatchAssetFixture !== "undefined" ? v11_EIP1193_WatchAssetFixture : null },
+            { name: "eth_accounts (EIP1193)", func: typeof v11_EIP1193_AccountsFixture !== "undefined" ? v11_EIP1193_AccountsFixture : null },
             { name: "common_json_rpc eth_chainId", func: typeof v11_CommonJsonRpcEthChainIdFixture !== "undefined" ? v11_CommonJsonRpcEthChainIdFixture : null }
         ]
     },
