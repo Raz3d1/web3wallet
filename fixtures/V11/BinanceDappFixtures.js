@@ -43,6 +43,8 @@
       tokenAddress: "0x0000000000000000000000000000000000000001",
       tokenSymbol: "TKN",
       tokenImage: "",
+      // eth_decrypt 占位符：加密数据（很多钱包未支持时会 method not found/参数错误）
+      encryptedHexData: "0x00",
     };
   }
 
@@ -90,6 +92,22 @@
     return g.buildFixtureFromData("EIP1193_WatchAsset", ethVars(addr));
   }
 
+  function v11_EIP1193_RequestPermissionsFixture(addr) {
+    return g.buildFixtureFromData("EIP1193_RequestPermissions", ethVars(addr));
+  }
+
+  function v11_EIP1193_EthSignTypedDataV3Fixture(addr) {
+    return g.buildFixtureFromData("EIP1193_EthSignTypedData_V3", ethVars(addr));
+  }
+
+  function v11_EIP1193_WalletSendCallsFixture(addr) {
+    return g.buildFixtureFromData("EIP1193_WalletSendCalls", ethVars(addr));
+  }
+
+  function v11_EIP1193_EthDecryptFixture(addr) {
+    return g.buildFixtureFromData("EIP1193_EthDecrypt", ethVars(addr));
+  }
+
   g.v11_RequestAccountsFixture = v11_RequestAccountsFixture;
   g.v11_RequestAccountsFullFixture = v11_RequestAccountsFullFixture;
   g.v11_SignTransactionFixture = v11_SignTransactionFixture;
@@ -101,4 +119,8 @@
   g.v11_EIP1193_AccountsFixture = v11_EIP1193_AccountsFixture;
   g.v11_EIP1193_SwitchChainFixture = v11_EIP1193_SwitchChainFixture;
   g.v11_EIP1193_WatchAssetFixture = v11_EIP1193_WatchAssetFixture;
+  g.v11_EIP1193_RequestPermissionsFixture = v11_EIP1193_RequestPermissionsFixture;
+  g.v11_EIP1193_EthSignTypedDataV3Fixture = v11_EIP1193_EthSignTypedDataV3Fixture;
+  g.v11_EIP1193_WalletSendCallsFixture = v11_EIP1193_WalletSendCallsFixture;
+  g.v11_EIP1193_EthDecryptFixture = v11_EIP1193_EthDecryptFixture;
 })();

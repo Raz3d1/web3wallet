@@ -260,4 +260,70 @@
       },
     },
   });
+
+  // 11. wallet_requestPermissions
+  r("EIP1193_RequestPermissions", {
+    id: "EIP1193_RequestPermissions",
+    name: "wallet_requestPermissions",
+    method: "wallet_requestPermissions",
+    // EIP-2255: request specific wallet permissions
+    params: [{ eth_accounts: {} }],
+  });
+
+  // 12. eth_signTypedData_v3（旧版 EIP-712 typed data）
+  r("EIP1193_EthSignTypedData_V3", {
+    id: "EIP1193_EthSignTypedData_V3",
+    name: "eth_signTypedData_v3",
+    method: "eth_signTypedData_v3",
+    params: [
+      "{{address}}",
+      {
+        $stringify: {
+          types: {
+            EIP712Domain: [
+              { name: "name", type: "string" },
+              { name: "version", type: "string" },
+              { name: "chainId", type: "uint256" },
+              { name: "verifyingContract", type: "address" },
+            ],
+            Mail: [{ name: "contents", type: "string" }],
+          },
+          primaryType: "Mail",
+          domain: {
+            name: "Fixture",
+            version: "1",
+            chainId: "{{chainIdNum}}",
+            verifyingContract: "0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC",
+          },
+          message: { contents: "hello" },
+        },
+      },
+    ],
+  });
+
+  // 13. wallet_sendCalls（EIP-5792 高危扩展：批量调用）
+  r("EIP1193_WalletSendCalls", {
+    id: "EIP1193_WalletSendCalls",
+    name: "wallet_sendCalls",
+    method: "wallet_sendCalls",
+    params: [
+      {
+        version: "1.0",
+        chainId: "{{chainIdHex}}",
+        from: "{{address}}",
+        calls: [
+          { to: "{{to}}", data: "{{dataHex}}", value: "{{valueHex}}" },
+          { to: "{{to}}", data: "{{dataHex}}", value: "0x0" },
+        ],
+      },
+    ],
+  });
+
+  // 14. eth_decrypt（私钥解密，很多钱包可能不支持）
+  r("EIP1193_EthDecrypt", {
+    id: "EIP1193_EthDecrypt",
+    name: "eth_decrypt",
+    method: "eth_decrypt",
+    params: ["{{encryptedHexData}}", "{{address}}"],
+  });
 })();

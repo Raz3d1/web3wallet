@@ -75,8 +75,20 @@ const testSuite = [
         ]
     },
     {
+    vId: "V14",
+    title: "视觉显示与欺骗 (Visual Misleading)",
+    mutations: [
+        { 
+            name: "动态 API 首尾相似投毒", 
+            // 注意这里无需 await，直接把函数传进去，点击时才执行
+            func: (addr) => typeof v14_MainnetDynamicPoisoningGenerator !== 'undefined' ? v14_MainnetDynamicPoisoningGenerator(addr) : null 
+        }
+    ]
+},
+    // 可以继续添加更多版本和测试项
+    {
         vId: "V11",
-        title: "Binance 特供版 (Native DApp Bridge 探测)",
+        title: "binance版 (Native DApp Bridge 探测)",
         mutations: [
             { name: "requestAccounts", func: typeof v11_RequestAccountsFixture !== "undefined" ? v11_RequestAccountsFixture : null },
             { name: "requestAccounts (full model)", func: typeof v11_RequestAccountsFullFixture !== "undefined" ? v11_RequestAccountsFullFixture : null },
@@ -88,21 +100,13 @@ const testSuite = [
             { name: "wallet_switchEthereumChain", func: typeof v11_EIP1193_SwitchChainFixture !== "undefined" ? v11_EIP1193_SwitchChainFixture : null },
             { name: "wallet_watchAsset", func: typeof v11_EIP1193_WatchAssetFixture !== "undefined" ? v11_EIP1193_WatchAssetFixture : null },
             { name: "eth_accounts (EIP1193)", func: typeof v11_EIP1193_AccountsFixture !== "undefined" ? v11_EIP1193_AccountsFixture : null },
+            { name: "wallet_requestPermissions", func: typeof v11_EIP1193_RequestPermissionsFixture !== "undefined" ? v11_EIP1193_RequestPermissionsFixture : null },
+            { name: "eth_signTypedData_v3", func: typeof v11_EIP1193_EthSignTypedDataV3Fixture !== "undefined" ? v11_EIP1193_EthSignTypedDataV3Fixture : null },
+            { name: "wallet_sendCalls", func: typeof v11_EIP1193_WalletSendCallsFixture !== "undefined" ? v11_EIP1193_WalletSendCallsFixture : null },
+            { name: "eth_decrypt", func: typeof v11_EIP1193_EthDecryptFixture !== "undefined" ? v11_EIP1193_EthDecryptFixture : null },
             { name: "common_json_rpc eth_chainId", func: typeof v11_CommonJsonRpcEthChainIdFixture !== "undefined" ? v11_CommonJsonRpcEthChainIdFixture : null }
         ]
-    },
-    {
-    vId: "V14",
-    title: "视觉显示与欺骗 (Visual Misleading)",
-    mutations: [
-        { 
-            name: "动态 API 首尾相似投毒", 
-            // 注意这里无需 await，直接把函数传进去，点击时才执行
-            func: (addr) => typeof v14_MainnetDynamicPoisoningGenerator !== 'undefined' ? v14_MainnetDynamicPoisoningGenerator(addr) : null 
-        }
-    ]
-}
-    // 可以继续添加更多版本和测试项
+    }
 ];
 
 const logPanel = document.getElementById('log-panel');
