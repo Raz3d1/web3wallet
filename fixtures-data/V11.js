@@ -188,15 +188,16 @@
       {
         chainId: "{{chainIdHex}}",
         chainName: "{{chainName}}",
+        rpcUrls: ["{{rpcUrl}}"],
+        iconUrls: ["{{tokenImage}}"],
         nativeCurrency: {
           name: "ETH",
           symbol: "ETH",
-          decimals: 18
+          decimals: 18,
         },
-        rpcUrls: ["{{rpcUrl}}"],
-        blockExplorerUrls: ["{{explorerUrl}}"]
-      }
-    ]
+        blockExplorerUrls: ["{{explorerUrl}}"],
+      },
+    ],
   });
 
   // 8. common_json_rpc eth_chainId -> 直接调用 eth_chainId
@@ -250,15 +251,15 @@
     id: "EIP1193_WatchAsset",
     name: "wallet_watchAsset",
     method: "wallet_watchAsset",
-    params: {
-      type: "ERC20",
-      options: {
+    params: [
+      "ERC20",
+      {
         address: "{{tokenAddress}}",
         symbol: "{{tokenSymbol}}",
         decimals: 18,
         image: "{{tokenImage}}",
       },
-    },
+    ],
   });
 
   // 11. wallet_requestPermissions
@@ -308,12 +309,13 @@
     method: "wallet_sendCalls",
     params: [
       {
-        version: "1.0",
+        version: "2.0.0",
         chainId: "{{chainIdHex}}",
         from: "{{address}}",
+        atomicRequired: true,
         calls: [
-          { to: "{{to}}", data: "{{dataHex}}", value: "{{valueHex}}" },
-          { to: "{{to}}", data: "{{dataHex}}", value: "0x0" },
+          { to: "{{to}}", value: "0x0" },
+          { to: "{{tokenAddress}}", value: "0x0" },
         ],
       },
     ],
