@@ -40,8 +40,8 @@
       gasPriceHex: "0x3b9aca00",
       nonceHex: "0x0",
       // wallet_watchAsset 占位符：ERC20
-      tokenAddress: "0x0000000000000000000000000000000000000001",
-      tokenSymbol: "TKN",
+      tokenAddress: "0x582d872a1b094fc48f5de31d3b73f2d9be47def1",
+      tokenSymbol: "TON",
       tokenImage: "",
       // eth_decrypt 占位符：加密数据（很多钱包未支持时会 method not found/参数错误）
       encryptedHexData: "0x00",
