@@ -163,12 +163,12 @@
     ]
   });
 
-  // 5. signRawTransaction 映射为 eth_sendRawTransaction（广播 raw tx）
-  r("Dapp_SignRawTransaction", {
-    id: "Dapp_SignRawTransaction",
+  // 5. eth_sendRawTransaction（MetaMask 标准：params 为单个 raw tx 字符串）
+  r("EIP1193_EthSendRawTransaction", {
+    id: "EIP1193_EthSendRawTransaction",
     name: "eth_sendRawTransaction",
     method: "eth_sendRawTransaction",
-    params: ["{{unsignedRawTxHex}}"],
+    params: ["{{rawTxHex}}"],
   });
 
   // 6. ecRecover -> personal_ecRecover

@@ -27,6 +27,8 @@
       hexMessage: utf8ToHex0x("hello"),
       unsignedRawTxHex:
         "0x01f86a010a84b2d05e0082520894000000000000000000000000000000000000dead85e8d4a5100080c080a0097ab436458e7f070c791d6f1bd77fe74d315312608adfdbbf78489130da078ca04e04f7d1e1797b56c9b65f821adbe6bdf1e3166368bd8bba101643ba1a2e551a",
+      rawTxHex:
+        "0xf869018203e882520894f17f52151ebef6c7334fad080c5704d77216b732881bc16d674ec80000801ba02da1c48b670996dcb1f447ef9ef00b33033c48a4fe938f420bec3e56bfd24071a062e0aa78a81bf0290afbc3a9d8e9a068e6d74caa66c5e0fa8a46deaae96b0833",
       sigHex: dummySig,
       chainName: "Ethereum Mainnet",
       rpcUrl: "https://rpc.ankr.com/eth",
@@ -61,7 +63,7 @@
   }
 
   function v11_SignRawTransactionFixture(addr) {
-    return g.buildFixtureFromData("Dapp_SignRawTransaction", ethVars(addr));
+    return g.buildFixtureFromData("EIP1193_EthSendRawTransaction", ethVars(addr));
   }
 
   function v11_EcRecoverFixture(addr) {
