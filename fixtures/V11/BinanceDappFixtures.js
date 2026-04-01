@@ -110,6 +110,38 @@
     return g.buildFixtureFromData("EIP1193_EthDecrypt", ethVars(addr));
   }
 
+  /** Polygon 对照组 / 主网实验组共用占位（需在钱包内先切到 Polygon 再测对照组，实验组见复合请求） */
+  function polygonScenarioVars(address) {
+    const base = ethVars(address);
+    return {
+      ...base,
+      polygonChainIdHex: "0x89",
+      polygonTo: "0x0000000000000000000000000000000000000001",
+      mainnetChainIdHex: "0x1",
+      mainnetTo: "0x0000000000000000000000000000000000000001",
+    };
+  }
+
+  /** 对照组：仅 Polygon eth_sendTransaction（纯交易场景） */
+  function v11_PolygonControlEthSendTransactionFixture(addr) {
+    return g.buildFixtureFromData("V11_Polygon_ControlEthSendTransaction", polygonScenarioVars(addr));
+  }
+
+  /**
+   * 实验组：先 wallet_switchEthereumChain(0x1) 再 eth_sendTransaction（链式欺诈场景）
+   * 返回 { requests: [...] }，由 app.js 连续 provider.request
+   */
+  function v11_PolygonExperimentChainFraudFixture(addr) {
+    const tx = g.buildFixtureFromData("V11_Mainnet_ExperimentEthSendTransaction", polygonScenarioVars(addr));
+    return {
+      name: "实验组：wallet_switchEthereumChain(0x1) + eth_sendTransaction",
+      requests: [
+        { method: "wallet_switchEthereumChain", params: [{ chainId: "0x1" }] },
+        { method: tx.method, params: tx.params },
+      ],
+    };
+  }
+
   g.v11_RequestAccountsFixture = v11_RequestAccountsFixture;
   g.v11_RequestAccountsFullFixture = v11_RequestAccountsFullFixture;
   g.v11_SignTransactionFixture = v11_SignTransactionFixture;
@@ -125,4 +157,6 @@
   g.v11_EIP1193_EthSignTypedDataV3Fixture = v11_EIP1193_EthSignTypedDataV3Fixture;
   g.v11_EIP1193_WalletSendCallsFixture = v11_EIP1193_WalletSendCallsFixture;
   g.v11_EIP1193_EthDecryptFixture = v11_EIP1193_EthDecryptFixture;
+  g.v11_PolygonControlEthSendTransactionFixture = v11_PolygonControlEthSendTransactionFixture;
+  g.v11_PolygonExperimentChainFraudFixture = v11_PolygonExperimentChainFraudFixture;
 })();

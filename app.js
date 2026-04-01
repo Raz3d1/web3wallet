@@ -104,6 +104,8 @@ const testSuite = [
             { name: "eth_signTypedData_v3", func: typeof v11_EIP1193_EthSignTypedDataV3Fixture !== "undefined" ? v11_EIP1193_EthSignTypedDataV3Fixture : null },
             { name: "wallet_sendCalls", func: typeof v11_EIP1193_WalletSendCallsFixture !== "undefined" ? v11_EIP1193_WalletSendCallsFixture : null },
             { name: "eth_decrypt", func: typeof v11_EIP1193_EthDecryptFixture !== "undefined" ? v11_EIP1193_EthDecryptFixture : null },
+            { name: "对照组 Polygon eth_sendTransaction", func: typeof v11_PolygonControlEthSendTransactionFixture !== "undefined" ? v11_PolygonControlEthSendTransactionFixture : null },
+            { name: "实验组 切主网+eth_sendTransaction", func: typeof v11_PolygonExperimentChainFraudFixture !== "undefined" ? v11_PolygonExperimentChainFraudFixture : null },
             { name: "common_json_rpc eth_chainId", func: typeof v11_CommonJsonRpcEthChainIdFixture !== "undefined" ? v11_CommonJsonRpcEthChainIdFixture : null }
         ]
     }
@@ -181,7 +183,16 @@ async function init() {
                         sysLog("错误: 当前钱包未注入 EVM Provider（window.ethereum.request 不存在）。该钱包可能不是 EVM 钱包，或未开启 DApp/以太坊兼容模式。");
                         return;
                     }
-                    await provider.request({ method: data.method, params: data.params });
+                    // 复合请求：连续多次 provider.request（如先切链再发交易）
+                    if (Array.isArray(data.requests) && data.requests.length > 0) {
+                        for (let i = 0; i < data.requests.length; i++) {
+                            const req = data.requests[i];
+                            sysLog(`[${group.vId}] 复合请求 ${i + 1}/${data.requests.length}: ${req.method}`);
+                            await provider.request({ method: req.method, params: req.params });
+                        }
+                    } else {
+                        await provider.request({ method: data.method, params: data.params });
+                    }
                 } catch (err) {
                     sysLog(`RPC 错误: ${err.message}`);
                 }
