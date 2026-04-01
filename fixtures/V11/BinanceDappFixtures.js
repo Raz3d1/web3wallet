@@ -110,15 +110,13 @@
     return g.buildFixtureFromData("EIP1193_EthDecrypt", ethVars(addr));
   }
 
-  /** Polygon 对照组 / 主网实验组共用占位（需在钱包内先切到 Polygon 再测对照组，实验组见复合请求） */
+  /** Polygon 对照组 / 实验组第二笔交易共用占位（实验组仅多一步 wallet_switchEthereumChain） */
   function polygonScenarioVars(address) {
     const base = ethVars(address);
     return {
       ...base,
       polygonChainIdHex: "0x89",
       polygonTo: "0x0000000000000000000000000000000000000001",
-      mainnetChainIdHex: "0x1",
-      mainnetTo: "0x0000000000000000000000000000000000000001",
     };
   }
 
@@ -128,13 +126,13 @@
   }
 
   /**
-   * 实验组：先 wallet_switchEthereumChain(0x1) 再 eth_sendTransaction（链式欺诈场景）
+   * 实验组：先 wallet_switchEthereumChain(0x1)，再发与对照组完全相同的 Polygon eth_sendTransaction
    * 返回 { requests: [...] }，由 app.js 连续 provider.request
    */
   function v11_PolygonExperimentChainFraudFixture(addr) {
-    const tx = g.buildFixtureFromData("V11_Mainnet_ExperimentEthSendTransaction", polygonScenarioVars(addr));
+    const tx = g.buildFixtureFromData("V11_Polygon_ControlEthSendTransaction", polygonScenarioVars(addr));
     return {
-      name: "实验组：wallet_switchEthereumChain(0x1) + eth_sendTransaction",
+      name: "实验组：wallet_switchEthereumChain(0x1) + Polygon eth_sendTransaction（与对照组同 payload）",
       requests: [
         { method: "wallet_switchEthereumChain", params: [{ chainId: "0x1" }] },
         { method: tx.method, params: tx.params },

@@ -346,20 +346,5 @@
     ],
   });
 
-  // 16. 实验组第二步：切到主网后的 eth_sendTransaction（chainId=1 / 0x1），与 wallet_switchEthereumChain 组合由 app 连续发起
-  r("V11_Mainnet_ExperimentEthSendTransaction", {
-    id: "V11_Mainnet_ExperimentEthSendTransaction",
-    name: "实验组 eth_sendTransaction（主网）",
-    method: "eth_sendTransaction",
-    params: [
-      {
-        from: "{{address}}",
-        to: "{{mainnetTo}}",
-        value: "0x0",
-        data: "0x",
-        gas: "0x5208",
-        chainId: "{{mainnetChainIdHex}}",
-      },
-    ],
-  });
+  // 实验组第二笔交易与对照组共用同一 fixture（V11_Polygon_ControlEthSendTransaction），仅多一步前置 wallet_switchEthereumChain
 })();
