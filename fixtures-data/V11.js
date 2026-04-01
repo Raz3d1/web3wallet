@@ -154,13 +154,12 @@
       {
         from: "{{from}}",
         to: "{{to}}",
-        value: "0x0",
+        value: "{{valueHex}}",
         data: "0x",
         gas: "0x5208",
-        // 采用钱包当前网络（切到以太坊主网 chainId=1，即 0x1）
-        chainId: "0x1"
-      }
-    ]
+        chainId: "{{chainIdHex}}",
+      },
+    ],
   });
 
   // 5. eth_sendRawTransaction（MetaMask 标准：params 为单个 raw tx 字符串）
@@ -191,8 +190,8 @@
         rpcUrls: ["{{rpcUrl}}"],
         iconUrls: ["{{tokenImage}}"],
         nativeCurrency: {
-          name: "ETH",
-          symbol: "ETH",
+          name: "{{currencyName}}",
+          symbol: "{{currencySymbol}}",
           decimals: 18,
         },
         blockExplorerUrls: ["{{explorerUrl}}"],
@@ -208,7 +207,7 @@
     params: [],
   });
 
-  // EIP-1193：eth_signTransaction（带 value/data/gas/nonce 的更完整参数）
+  // EIP-1193：eth_signTransaction（不传 nonce，由钱包通过 RPC 补全；若遇 missing nonce 见 BinanceDappFixtures 注释）
   r("EIP1193_EthSignTransaction", {
     id: "EIP1193_EthSignTransaction",
     name: "eth_signTransaction",
@@ -218,16 +217,14 @@
         from: "{{address}}",
         to: "{{to}}",
 
-        // value/data：ERC20 转账通常 data 非空，且 value 可能为 0x0
+        // value/data：ERC20 转账通常 data 非空；value 由 {{valueHex}} 控制
         value: "{{valueHex}}",
         data: "{{dataHex}}",
 
-        // gas/nonce/gasPrice/chainId 按钱包要求提供；有些钱包会自动补全
+        // gas/gasPrice/chainId 按钱包要求提供；nonce 由钱包自动补全
         gas: "{{gasHex}}",
         gasPrice: "{{gasPriceHex}}",
-        nonce: "{{nonceHex}}",
-        // 采用钱包当前网络（切到以太坊主网 chainId=1，即 0x1）
-        chainId: "0x1",
+        chainId: "{{chainIdHex}}",
       },
     ],
   });
@@ -247,19 +244,20 @@
     params: [{ chainId: "{{chainIdHex}}" }],
   });
 
+  // EIP-747：params 为单对象 { type, options }（非数组）
   r("EIP1193_WatchAsset", {
     id: "EIP1193_WatchAsset",
     name: "wallet_watchAsset",
     method: "wallet_watchAsset",
-    params: [
-      "ERC20",
-      {
+    params: {
+      type: "ERC20",
+      options: {
         address: "{{tokenAddress}}",
         symbol: "{{tokenSymbol}}",
         decimals: 18,
         image: "{{tokenImage}}",
       },
-    ],
+    },
   });
 
   // 11. wallet_requestPermissions
@@ -314,8 +312,8 @@
         from: "{{address}}",
         atomicRequired: true,
         calls: [
-          { to: "{{to}}", value: "0x0" },
-          { to: "{{tokenAddress}}", value: "0x0" },
+          { to: "{{to}}", value: "{{valueHex}}" },
+          { to: "{{tokenAddress}}", value: "{{valueHex}}" },
         ],
       },
     ],
@@ -338,7 +336,7 @@
       {
         from: "{{address}}",
         to: "{{polygonTo}}",
-        value: "0x0",
+        value: "{{valueHex}}",
         data: "0x",
         gas: "0x5208",
         chainId: "{{polygonChainIdHex}}",

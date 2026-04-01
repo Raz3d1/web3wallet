@@ -34,13 +34,17 @@
       rpcUrl: "https://rpc.ankr.com/eth",
       explorerUrl: "https://etherscan.io/",
       chainIdentifier: "ethereum",
-      // eth_signTransaction：占位符（用于更完整的 EIP-1193 事务字段）
-      valueHex: "0x0",
+      currencyName: "ETH",
+      currencySymbol: "ETH",
+      // eth_signTransaction：占位符（用于更完整的 EIP-1193 事务字段）；约 0.01 个原生代币（18 位小数）
+      valueHex: "0x2386f26fc10000",
       // 这里用 0x 占位（若钱包/签名器要求 calldata，需改成真实编码后的 data）
       dataHex: "0x",
       gasHex: "0x5208",
       gasPriceHex: "0x3b9aca00",
-      nonceHex: "0x0",
+      // 默认不传 nonce（见 fixtures-data/V11.js EIP1193_EthSignTransaction）。
+      // 若钱包强校验 “missing nonce”，可在 ethVars 中取消下面注释，并在 V11.js 该 fixture 的 tx 对象中加回：nonce: "{{nonceHex}}"
+      // nonceHex: "0x491c",
       // wallet_watchAsset 占位符：ERC20
       tokenAddress: "0x582d872a1b094fc48f5de31d3b73f2d9be47def1",
       tokenSymbol: "TON",
@@ -117,6 +121,8 @@
       ...base,
       polygonChainIdHex: "0x89",
       polygonTo: "0x0000000000000000000000000000000000000001",
+      currencyName: "MATIC",
+      currencySymbol: "MATIC",
     };
   }
 
