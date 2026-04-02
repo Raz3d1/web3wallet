@@ -102,8 +102,10 @@ const testSuite = [
             { name: "eth_accounts (EIP1193)", func: typeof v11_EIP1193_AccountsFixture !== "undefined" ? v11_EIP1193_AccountsFixture : null },
             { name: "wallet_requestPermissions", func: typeof v11_EIP1193_RequestPermissionsFixture !== "undefined" ? v11_EIP1193_RequestPermissionsFixture : null },
             { name: "eth_signTypedData_v3", func: typeof v11_EIP1193_EthSignTypedDataV3Fixture !== "undefined" ? v11_EIP1193_EthSignTypedDataV3Fixture : null },
+            { name: "eth_signTypedData_v4", func: typeof v11_EIP1193_EthSignTypedDataV4Fixture !== "undefined" ? v11_EIP1193_EthSignTypedDataV4Fixture : null },
             { name: "wallet_sendCalls", func: typeof v11_EIP1193_WalletSendCallsFixture !== "undefined" ? v11_EIP1193_WalletSendCallsFixture : null },
             { name: "eth_decrypt", func: typeof v11_EIP1193_EthDecryptFixture !== "undefined" ? v11_EIP1193_EthDecryptFixture : null },
+            { name: "切换到 Polygon（0x89）", func: typeof v11_SwitchToPolygonFixture !== "undefined" ? v11_SwitchToPolygonFixture : null },
             { name: "对照组 Polygon eth_sendTransaction", func: typeof v11_PolygonControlEthSendTransactionFixture !== "undefined" ? v11_PolygonControlEthSendTransactionFixture : null },
             { name: "实验组 切主网+eth_sendTransaction", func: typeof v11_PolygonExperimentChainFraudFixture !== "undefined" ? v11_PolygonExperimentChainFraudFixture : null },
             { name: "common_json_rpc eth_chainId", func: typeof v11_CommonJsonRpcEthChainIdFixture !== "undefined" ? v11_CommonJsonRpcEthChainIdFixture : null }

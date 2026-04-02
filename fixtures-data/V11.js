@@ -357,6 +357,14 @@
     params: ["{{encryptedHexData}}", "{{address}}"],
   });
 
+  // 触发 wallet_switchEthereumChain（Polygon）：请求钱包切换到 Polygon（chainId=137 / 0x89）
+  r("V11_SwitchToPolygon", {
+    id: "V11_SwitchToPolygon",
+    name: "切换到 Polygon（wallet_switchEthereumChain）",
+    method: "wallet_switchEthereumChain",
+    params: [{ chainId: "{{polygonChainIdHex}}" }],
+  });
+
   // 触发 eth_sendTransaction（对照组）：在 Polygon 场景下发一笔单独交易。
   r("V11_Polygon_ControlEthSendTransaction", {
     id: "V11_Polygon_ControlEthSendTransaction",

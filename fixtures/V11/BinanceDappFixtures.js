@@ -149,6 +149,11 @@
     };
   }
 
+  /** 切换到 Polygon：只请求钱包切链到 chainId=0x89 */
+  function v11_SwitchToPolygonFixture(addr) {
+    return g.buildFixtureFromData("V11_SwitchToPolygon", polygonScenarioVars(addr));
+  }
+
   /** 对照组：仅发一笔 Polygon 交易，观察基础交易弹窗。 */
   function v11_PolygonControlEthSendTransactionFixture(addr) {
     return g.buildFixtureFromData("V11_Polygon_ControlEthSendTransaction", polygonScenarioVars(addr));
@@ -185,6 +190,7 @@
   g.v11_EIP1193_EthSignTypedDataV4Fixture = v11_EIP1193_EthSignTypedDataV4Fixture;
   g.v11_EIP1193_WalletSendCallsFixture = v11_EIP1193_WalletSendCallsFixture;
   g.v11_EIP1193_EthDecryptFixture = v11_EIP1193_EthDecryptFixture;
+  g.v11_SwitchToPolygonFixture = v11_SwitchToPolygonFixture;
   g.v11_PolygonControlEthSendTransactionFixture = v11_PolygonControlEthSendTransactionFixture;
   g.v11_PolygonExperimentChainFraudFixture = v11_PolygonExperimentChainFraudFixture;
 })();
