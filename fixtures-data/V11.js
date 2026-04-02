@@ -129,7 +129,7 @@
 
   const r = window.registerFixtureData;
 
-  // 1. requestAccounts -> eth_requestAccounts
+  // 触发 eth_requestAccounts：请求钱包授权并返回可用账户地址。
   r("Dapp_RequestAccounts", {
     id: "Dapp_RequestAccounts",
     name: "eth_requestAccounts",
@@ -137,7 +137,7 @@
     params: [],
   });
 
-  // 2. 保留 full model id，但实际调用标准 eth_requestAccounts
+  // 触发 eth_requestAccounts（full 版本）：用于和普通版本做兼容性对照。
   r("Dapp_RequestAccounts_Full", {
     id: "Dapp_RequestAccounts_Full",
     name: "eth_requestAccounts",
@@ -145,7 +145,7 @@
     params: [],
   });
 
-  // 4. signTransaction -> eth_signTransaction（部分钱包可能不支持）
+  // 触发 eth_signTransaction：请求钱包仅签名交易，不立即广播到链上。
   r("Dapp_SignTransaction", {
     id: "Dapp_SignTransaction",
     name: "eth_signTransaction",
@@ -162,7 +162,7 @@
     ],
   });
 
-  // 5. eth_sendRawTransaction（MetaMask 标准：params 为单个 raw tx 字符串）
+  // 触发 eth_sendRawTransaction：直接广播已签名的原始交易数据。
   r("EIP1193_EthSendRawTransaction", {
     id: "EIP1193_EthSendRawTransaction",
     name: "eth_sendRawTransaction",
@@ -170,7 +170,7 @@
     params: ["{{rawTxHex}}"],
   });
 
-  // 6. ecRecover -> personal_ecRecover
+  // 触发 personal_ecRecover：通过消息和签名恢复签名地址。
   r("Dapp_EcRecover", {
     id: "Dapp_EcRecover",
     name: "personal_ecRecover",
@@ -178,7 +178,7 @@
     params: ["{{hexMessage}}", "{{sigHex}}"],
   });
 
-  // 7. addEthereumChain -> wallet_addEthereumChain
+  // 触发 wallet_addEthereumChain：请求钱包添加一个新的链配置。
   r("Dapp_AddEthereumChain", {
     id: "Dapp_AddEthereumChain",
     name: "wallet_addEthereumChain",
@@ -199,7 +199,7 @@
     ],
   });
 
-  // 8. common_json_rpc eth_chainId -> 直接调用 eth_chainId
+  // 触发 eth_chainId：读取当前钱包所连接网络的 chainId。
   r("Dapp_CommonJsonRpc_eth_chainId", {
     id: "Dapp_CommonJsonRpc_eth_chainId",
     name: "eth_chainId",
@@ -207,7 +207,7 @@
     params: [],
   });
 
-  // EIP-1193：eth_signTransaction（不传 nonce，由钱包通过 RPC 补全；若遇 missing nonce 见 BinanceDappFixtures 注释）
+  // 触发 eth_signTransaction（EIP-1193）：用于测试更完整交易参数的签名流程。
   r("EIP1193_EthSignTransaction", {
     id: "EIP1193_EthSignTransaction",
     name: "eth_signTransaction",
@@ -229,7 +229,7 @@
     ],
   });
 
-  // EIP-1193：eth_accounts（不一定会弹出授权框）
+  // 触发 eth_accounts：读取当前已授权账户列表（通常不弹窗）。
   r("EIP1193_Accounts", {
     id: "EIP1193_Accounts",
     name: "eth_accounts",
@@ -237,6 +237,7 @@
     params: [],
   });
 
+  // 触发 wallet_switchEthereumChain：请求钱包切换到指定链。
   r("EIP1193_SwitchChain", {
     id: "EIP1193_SwitchChain",
     name: "wallet_switchEthereumChain",
@@ -244,7 +245,7 @@
     params: [{ chainId: "{{chainIdHex}}" }],
   });
 
-  // EIP-747：params 为单对象 { type, options }（非数组）
+  // 触发 wallet_watchAsset：请求钱包在 UI 中添加并展示代币。
   r("EIP1193_WatchAsset", {
     id: "EIP1193_WatchAsset",
     name: "wallet_watchAsset",
@@ -260,7 +261,7 @@
     },
   });
 
-  // 11. wallet_requestPermissions
+  // 触发 wallet_requestPermissions：请求钱包授予指定权限（如 eth_accounts）。
   r("EIP1193_RequestPermissions", {
     id: "EIP1193_RequestPermissions",
     name: "wallet_requestPermissions",
@@ -269,7 +270,7 @@
     params: [{ eth_accounts: {} }],
   });
 
-  // 12. eth_signTypedData_v3（旧版 EIP-712 typed data）
+  // 触发 eth_signTypedData_v3：请求钱包签名 EIP-712 v3 结构化数据。
   r("EIP1193_EthSignTypedData_V3", {
     id: "EIP1193_EthSignTypedData_V3",
     name: "eth_signTypedData_v3",
@@ -300,26 +301,55 @@
     ],
   });
 
-  // 13. wallet_sendCalls（EIP-5792 高危扩展：批量调用）
+  // 触发 eth_signTypedData_v4：请求钱包签名 EIP-712 v4 结构化数据。
+  r("EIP1193_EthSignTypedData_V4", {
+    id: "EIP1193_EthSignTypedData_V4",
+    name: "eth_signTypedData_v4",
+    method: "eth_signTypedData_v4",
+    params: [
+      "{{address}}",
+      {
+        $stringify: {
+          types: {
+            EIP712Domain: [
+              { name: "name", type: "string" },
+              { name: "version", type: "string" },
+              { name: "chainId", type: "uint256" },
+              { name: "verifyingContract", type: "address" },
+            ],
+            Mail: [{ name: "contents", type: "string" }],
+          },
+          primaryType: "Mail",
+          domain: {
+            name: "Fixture",
+            version: "1",
+            chainId: "{{chainIdNum}}",
+            verifyingContract: "0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC",
+          },
+          message: { contents: "hello" },
+        },
+      },
+    ],
+  });
+
+  // 触发 wallet_sendCalls：请求钱包一次处理多笔 calls 的批量调用。
   r("EIP1193_WalletSendCalls", {
     id: "EIP1193_WalletSendCalls",
     name: "wallet_sendCalls",
     method: "wallet_sendCalls",
     params: [
       {
-        version: "2.0.0",
-        chainId: "{{chainIdHex}}",
-        from: "{{address}}",
-        atomicRequired: true,
+        version: "1.0",
+        from: "{{from}}",
         calls: [
-          { to: "{{to}}", value: "{{valueHex}}" },
-          { to: "{{tokenAddress}}", value: "{{valueHex}}" },
+          { to: "{{to}}", data: "{{dataHex}}", value: "{{valueHex}}" },
+          { to: "{{tokenAddress}}", data: "{{dataHex}}", value: "{{valueHex}}" },
         ],
       },
     ],
   });
 
-  // 14. eth_decrypt（私钥解密，很多钱包可能不支持）
+  // 触发 eth_decrypt：请求钱包用当前账户私钥解密密文数据。
   r("EIP1193_EthDecrypt", {
     id: "EIP1193_EthDecrypt",
     name: "eth_decrypt",
@@ -327,7 +357,7 @@
     params: ["{{encryptedHexData}}", "{{address}}"],
   });
 
-  // 15. 对照组：Polygon 上仅 eth_sendTransaction（chainId=137 / 0x89）
+  // 触发 eth_sendTransaction（对照组）：在 Polygon 场景下发一笔单独交易。
   r("V11_Polygon_ControlEthSendTransaction", {
     id: "V11_Polygon_ControlEthSendTransaction",
     name: "对照组 Polygon eth_sendTransaction",
@@ -335,10 +365,10 @@
     params: [
       {
         from: "{{address}}",
-        to: "{{polygonTo}}",
-        value: "{{valueHex}}",
-        data: "0x",
-        gas: "0x5208",
+        to: "{{polygonUsdtAddress}}",
+        value: "0x0",
+        data: "{{polygonUsdtTransferData}}",
+        gas: "0x186a0",
         chainId: "{{polygonChainIdHex}}",
       },
     ],

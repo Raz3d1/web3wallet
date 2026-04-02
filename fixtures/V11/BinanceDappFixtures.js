@@ -21,7 +21,7 @@
       from: address,
       reqId: "1",
       network: "ethereum",
-      to: "0x17eed3ad6051F833A7D0Ccd0E5a973dFe4EBa702",
+      to: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
       chainIdHex: "0x1",
       chainIdNum: "1",
       hexMessage: utf8ToHex0x("hello"),
@@ -46,70 +46,90 @@
       // 若钱包强校验 “missing nonce”，可在 ethVars 中取消下面注释，并在 V11.js 该 fixture 的 tx 对象中加回：nonce: "{{nonceHex}}"
       // nonceHex: "0x491c",
       // wallet_watchAsset 占位符：ERC20
-      tokenAddress: "0x582d872a1b094fc48f5de31d3b73f2d9be47def1",
-      tokenSymbol: "TON",
-      tokenImage: "",
+      tokenAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      tokenSymbol: "USDC",
+      tokenImage: "https://cryptologos.cc/logos/usd-coin-usdc-logo.png",
       // eth_decrypt 占位符：加密数据（很多钱包未支持时会 method not found/参数错误）
       encryptedHexData: "0x00",
     };
   }
 
+  // 构造 requestAccounts 载体：触发钱包账户授权流程。
   function v11_RequestAccountsFixture(addr) {
     return g.buildFixtureFromData("Dapp_RequestAccounts", ethVars(addr));
   }
 
+  // 构造 requestAccounts full 载体：用于兼容性对照测试。
   function v11_RequestAccountsFullFixture(addr) {
     return g.buildFixtureFromData("Dapp_RequestAccounts_Full", ethVars(addr));
   }
 
+  // 构造 signTransaction 载体：测试仅签名不广播的交易流程。
   function v11_SignTransactionFixture(addr) {
     return g.buildFixtureFromData("Dapp_SignTransaction", ethVars(addr));
   }
 
+  // 构造 sendRawTransaction 载体：测试广播原始交易。
   function v11_SignRawTransactionFixture(addr) {
     return g.buildFixtureFromData("EIP1193_EthSendRawTransaction", ethVars(addr));
   }
 
+  // 构造 ecRecover 载体：测试签名地址恢复能力。
   function v11_EcRecoverFixture(addr) {
     return g.buildFixtureFromData("Dapp_EcRecover", ethVars(addr));
   }
 
+  // 构造 addEthereumChain 载体：测试新增链配置弹窗。
   function v11_AddEthereumChainFixture(addr) {
     return g.buildFixtureFromData("Dapp_AddEthereumChain", ethVars(addr));
   }
 
+  // 构造 eth_chainId 载体：测试当前网络识别。
   function v11_CommonJsonRpcEthChainIdFixture(addr) {
     return g.buildFixtureFromData("Dapp_CommonJsonRpc_eth_chainId", ethVars(addr));
   }
 
+  // 构造 EIP1193 signTransaction 载体：测试完整交易字段签名流程。
   function v11_EIP1193_EthSignTransactionFixture(addr) {
     return g.buildFixtureFromData("EIP1193_EthSignTransaction", ethVars(addr));
   }
 
+  // 构造 eth_accounts 载体：读取已授权账户列表。
   function v11_EIP1193_AccountsFixture(addr) {
     return g.buildFixtureFromData("EIP1193_Accounts", ethVars(addr));
   }
 
+  // 构造 switchEthereumChain 载体：测试钱包切链行为。
   function v11_EIP1193_SwitchChainFixture(addr) {
     return g.buildFixtureFromData("EIP1193_SwitchChain", ethVars(addr));
   }
 
+  // 构造 watchAsset 载体：测试钱包添加代币展示行为。
   function v11_EIP1193_WatchAssetFixture(addr) {
     return g.buildFixtureFromData("EIP1193_WatchAsset", ethVars(addr));
   }
 
+  // 构造 requestPermissions 载体：测试权限申请弹窗。
   function v11_EIP1193_RequestPermissionsFixture(addr) {
     return g.buildFixtureFromData("EIP1193_RequestPermissions", ethVars(addr));
   }
 
+  // 构造 signTypedData v3 载体：测试 EIP-712 v3 签名展示与校验。
   function v11_EIP1193_EthSignTypedDataV3Fixture(addr) {
     return g.buildFixtureFromData("EIP1193_EthSignTypedData_V3", ethVars(addr));
   }
 
+  // 构造 signTypedData v4 载体：测试 EIP-712 v4 签名展示与校验。
+  function v11_EIP1193_EthSignTypedDataV4Fixture(addr) {
+    return g.buildFixtureFromData("EIP1193_EthSignTypedData_V4", ethVars(addr));
+  }
+
+  // 构造 wallet_sendCalls 载体：测试批量 calls 的复合交互展示。
   function v11_EIP1193_WalletSendCallsFixture(addr) {
     return g.buildFixtureFromData("EIP1193_WalletSendCalls", ethVars(addr));
   }
 
+  // 构造 eth_decrypt 载体：测试高敏感解密请求的告警与阻断。
   function v11_EIP1193_EthDecryptFixture(addr) {
     return g.buildFixtureFromData("EIP1193_EthDecrypt", ethVars(addr));
   }
@@ -121,12 +141,15 @@
       ...base,
       polygonChainIdHex: "0x89",
       polygonTo: "0x0000000000000000000000000000000000000001",
+      polygonUsdtAddress: "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
+      polygonUsdtTransferData:
+        "0xa9059cbb000000000000000000000000000000000000000000000000000000000000dead00000000000000000000000000000000000000000000000000000000000f4240",
       currencyName: "MATIC",
       currencySymbol: "MATIC",
     };
   }
 
-  /** 对照组：仅 Polygon eth_sendTransaction（纯交易场景） */
+  /** 对照组：仅发一笔 Polygon 交易，观察基础交易弹窗。 */
   function v11_PolygonControlEthSendTransactionFixture(addr) {
     return g.buildFixtureFromData("V11_Polygon_ControlEthSendTransaction", polygonScenarioVars(addr));
   }
@@ -159,6 +182,7 @@
   g.v11_EIP1193_WatchAssetFixture = v11_EIP1193_WatchAssetFixture;
   g.v11_EIP1193_RequestPermissionsFixture = v11_EIP1193_RequestPermissionsFixture;
   g.v11_EIP1193_EthSignTypedDataV3Fixture = v11_EIP1193_EthSignTypedDataV3Fixture;
+  g.v11_EIP1193_EthSignTypedDataV4Fixture = v11_EIP1193_EthSignTypedDataV4Fixture;
   g.v11_EIP1193_WalletSendCallsFixture = v11_EIP1193_WalletSendCallsFixture;
   g.v11_EIP1193_EthDecryptFixture = v11_EIP1193_EthDecryptFixture;
   g.v11_PolygonControlEthSendTransactionFixture = v11_PolygonControlEthSendTransactionFixture;
