@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AstraVault · 链上资格核验</title>
+    <style>
+        :root {
+            --bg-deep: #0a0b0f;
+            --bg-card: rgba(18, 20, 28, 0.92);
+            --gold: #c9a227;
+            --gold-dim: #8a7020;
+            --text: #e8eaed;
+            --text-muted: #9aa0a6;
+            --accent: #5c9ded;
+            --border: rgba(201, 162, 39, 0.25);
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: var(--bg-deep);
+            color: var(--text);
+            font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            background-image:
+                radial-gradient(ellipse 80% 50% at 50% -20%, rgba(92, 157, 237, 0.12), transparent),
+                radial-gradient(ellipse 60% 40% at 100% 50%, rgba(201, 162, 39, 0.06), transparent),
+                linear-gradient(180deg, #0a0b0f 0%, #12141c 100%);
+        }
+
+        .urgency-bar {
+            text-align: center;
+            font-size: 12px;
+            padding: 8px 12px;
+            background: linear-gradient(90deg, #2d1f0a, #3d2810, #2d1f0a);
+            color: #fcdfa0;
+            border-bottom: 1px solid var(--border);
+            letter-spacing: 0.02em;
+        }
+        .urgency-bar strong { color: #fff; }
+
+        .scam-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding: 16px 20px;
+            max-width: 1100px;
+            margin: 0 auto;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .brand-mark {
+            width: 40px; height: 40px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--gold) 0%, #6b5420 100%);
+            box-shadow: 0 4px 16px rgba(201, 162, 39, 0.35);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 18px;
+            color: #0a0b0f;
+        }
+        .brand-text h1 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }
+        .brand-text span { font-size: 11px; color: var(--text-muted); }
+        .header-nav { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .header-nav a, .header-nav button {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-decoration: none;
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 6px 12px;
+            border-radius: 999px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .header-nav a:hover, .header-nav button:hover { color: var(--gold); border-color: var(--gold-dim); }
+
+        .hero {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 28px 20px 20px;
+            text-align: center;
+        }
+        .hero-badge {
+            display: inline-block;
+            font-size: 11px;
+            padding: 4px 12px;
+            border-radius: 999px;
+            background: rgba(92, 157, 237, 0.15);
+            color: var(--accent);
+            border: 1px solid rgba(92, 157, 237, 0.35);
+            margin-bottom: 12px;
+        }
+        .hero h2 { margin: 0 0 10px; font-size: clamp(22px, 4vw, 28px); font-weight: 700; }
+        .hero h2 span { color: var(--gold); }
+        .hero p { margin: 0 auto 20px; max-width: 560px; font-size: 14px; color: var(--text-muted); line-height: 1.6; }
+
+        .stats-row {
+            display: flex;
+            justify-content: center;
+            gap: 24px 40px;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+        }
+        .stat { text-align: center; }
+        .stat b { display: block; font-size: 20px; color: var(--gold); font-variant-numeric: tabular-nums; }
+        .stat small { font-size: 11px; color: var(--text-muted); }
+
+        .trust-strip {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 16px 28px;
+            padding: 16px;
+            font-size: 11px;
+            color: var(--text-muted);
+            opacity: 0.85;
+        }
+        .trust-strip span::before { content: "✓ "; color: #34a853; }
+
+        .shell { max-width: 720px; margin: 0 auto; padding: 0 16px 40px; }
+
+        .v-section {
+            margin-bottom: 16px;
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 22px;
+            border: 1px solid var(--border);
+            box-shadow: 0 24px 48px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.04);
+        }
+        .v-section.dynamic-rpc { backdrop-filter: blur(8px); }
+
+        .panel-kicker {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--gold);
+            margin-bottom: 6px;
+        }
+        .v-title { font-size: 17px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+        .v-title code {
+            font-size: 13px;
+            font-weight: 600;
+            background: rgba(92, 157, 237, 0.12);
+            color: var(--accent);
+            padding: 3px 8px;
+            border-radius: 6px;
+            border: 1px solid rgba(92, 157, 237, 0.25);
+        }
+
+        .dynamic-rpc label {
+            display: block;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin: 0 0 6px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+        .dynamic-rpc select, .dynamic-rpc input[type="text"], .dynamic-rpc textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 10px;
+            font-size: 14px;
+            font-family: inherit;
+            background: rgba(10, 11, 15, 0.6);
+            color: var(--text);
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .dynamic-rpc select:focus, .dynamic-rpc input:focus, .dynamic-rpc textarea:focus {
+            outline: none;
+            border-color: rgba(201, 162, 39, 0.5);
+            box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.12);
+        }
+        .dynamic-rpc textarea {
+            min-height: 120px;
+            font-family: ui-monospace, "Cascadia Code", monospace;
+            font-size: 12px;
+            resize: vertical;
+            line-height: 1.45;
+        }
+        .dynamic-rpc .dynamic-actions { margin-top: 20px; }
+        .dynamic-rpc .btn-send {
+            width: 100%;
+            padding: 14px 24px;
+            background: linear-gradient(180deg, #d4af37 0%, #9a7b1a 100%);
+            color: #0a0b0f;
+            border: none;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(201, 162, 39, 0.35);
+            letter-spacing: 0.02em;
+        }
+        .dynamic-rpc .btn-send:hover { filter: brightness(1.05); }
+        .dynamic-rpc .btn-send:active { transform: scale(0.99); }
+
+        .hint {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin: 12px 0 16px;
+            line-height: 1.55;
+            padding: 12px;
+            background: rgba(0,0,0,0.25);
+            border-radius: 10px;
+            border-left: 3px solid var(--gold-dim);
+        }
+        #dynamic-method-custom-wrap { display: none; margin-top: 12px; }
+        #dynamic-method-custom-wrap.visible { display: block; }
+
+        .param-mode-row {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin: 16px 0;
+            padding: 14px;
+            background: rgba(0,0,0,0.28);
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+        .param-mode-row label {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            font-weight: 500;
+            cursor: pointer;
+            margin: 0;
+            text-transform: none;
+            letter-spacing: 0;
+            color: var(--text);
+            font-size: 13px;
+        }
+        .param-mode-row input { margin-top: 3px; accent-color: var(--gold); }
+        .param-mode-row code { font-size: 11px; background: rgba(92, 157, 237, 0.15); padding: 1px 4px; border-radius: 4px; }
+
+        #wrap-payload-object, #wrap-params-array, #wrap-schema-form { margin-top: 8px; }
+        #wrap-params-array.hidden, #wrap-payload-object.hidden, #wrap-schema-form.hidden { display: none; }
+
+        .schema-blurb { font-size: 13px; color: var(--text-muted); margin: 0 0 14px; line-height: 1.5; }
+        .schema-blurb.warn { color: #f28b82; background: rgba(179, 52, 42, 0.15); padding: 10px 12px; border-radius: 8px; border: 1px solid rgba(179, 52, 42, 0.35); }
+        .empty-hint { font-size: 14px; color: var(--accent); background: rgba(92, 157, 237, 0.1); padding: 14px; border-radius: 10px; margin: 0; border: 1px solid rgba(92, 157, 237, 0.2); }
+        .schema-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px; }
+        @media (max-width: 640px) { .schema-grid { grid-template-columns: 1fr; } }
+        .schema-field label { font-size: 11px; color: #80868b; }
+        .schema-field.full { grid-column: 1 / -1; }
+        .schema-field input, .schema-field textarea { margin-top: 4px; }
+        .schema-json-editor { min-height: 220px; font-size: 12px; }
+
+        .log-panel {
+            background: #050608;
+            color: #7ee787;
+            padding: 14px;
+            border-radius: 12px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: ui-monospace, monospace;
+            font-size: 11px;
+            line-height: 1.5;
+            border: 1px solid rgba(201, 162, 39, 0.2);
+            box-shadow: inset 0 0 24px rgba(0,0,0,0.5);
+        }
+        .log-caption {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .log-caption::before {
+            content: "";
+            width: 8px; height: 8px;
+            background: #34a853;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #34a853;
+        }
+
+        .page-foot {
+            text-align: center;
+            padding: 24px 16px;
+            font-size: 11px;
+            color: var(--text-muted);
+            max-width: 560px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+        .page-foot .legal { opacity: 0.65; margin-top: 12px; font-size: 10px; }
+    </style>
+</head>
+<body>
+    <div class="urgency-bar">
+        <strong>优先通道监测中</strong> · 请尽快完成下方链上核验，以免<strong> 资格失效 </strong>（界面为安全研究模拟，非真实资产活动）
+    </div>
+
+    <header class="scam-header">
+        <div class="brand">
+            <div class="brand-mark" aria-hidden="true">A</div>
+            <div class="brand-text">
+                <h1>AstraVault Protocol</h1>
+                <span>Institutional Liquidity · Omni-Chain Rewards</span>
+            </div>
+        </div>
+        <div class="header-nav">
+            <a href="#" onclick="return false;">白皮书</a>
+            <a href="#" onclick="return false;">审计报告</a>
+            <a href="../index.html">测试员出口</a>
+            <button type="button" onclick="location.reload()">刷新</button>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div class="hero-badge">官方合作节点已就绪 · 链上证明可查询</div>
+        <h2>领取您的 <span>创世空投份额</span></h2>
+        <p>为保障公平分发，系统需与您连接的钱包完成一次<strong>链上交互授权</strong>。请在下方选择操作并完成确认——该流程与主流 DApp 授权体验一致，用于研究钱包弹窗与风险提示。</p>
+        <div class="stats-row">
+            <div class="stat"><b>$2.84B</b><small>虚假展示 TVL</small></div>
+            <div class="stat"><b>18,492</b><small>本小时「核验」次数</small></div>
+            <div class="stat"><b>99.2%</b><small>虚构满意度</small></div>
+        </div>
+        <div class="trust-strip">
+            <span>Formal Verification Partner（虚构）</span>
+            <span>Multi-Sig Treasury（展示用）</span>
+            <span>Ethereum Compatible</span>
+            <span>非托管 · 链上可验证（文案演示）</span>
+        </div>
+    </section>
+
+    <div class="shell">
+        <div class="v-section dynamic-rpc">
+            <div class="panel-kicker">Step 2 — On-chain verification</div>
+            <div class="v-title">链上交互控制台 · <code>ethereum.request</code></div>
+            <p class="hint">
+                <strong style="color: var(--text);">表单模式：</strong>按「协议操作类型」自动展开字段（与常见 fixtures 一致）。若需完全自定义负载，可切换<strong>首参 JSON</strong>或<strong>完整 params</strong>。点击金色按钮将向已注入的钱包发起真实 RPC——仅用于授权测试环境。
+            </p>
+
+            <label for="dynamic-method-select">协议操作类型（RPC method）</label>
+            <select id="dynamic-method-select" aria-label="JSON-RPC method"></select>
+            <div id="dynamic-method-custom-wrap">
+                <label for="dynamic-method-custom">自定义指令名称</label>
+                <input type="text" id="dynamic-method-custom" placeholder="与内置列表同名可匹配表单，如 eth_sendTransaction" autocomplete="off" />
+            </div>
+            <div class="param-mode-row" role="radiogroup" aria-label="参数填写方式">
+                <label><input type="radio" name="param-mode" value="form" checked /> <strong>表单模式</strong> — 结构化填写（推荐）</label>
+                <label><input type="radio" name="param-mode" value="object" /> <strong>首参 JSON</strong> — 单对象，自动包装为 <code>[对象]</code></label>
+                <label><input type="radio" name="param-mode" value="array" /> <strong>完整 params</strong> — JSON 数组</label>
+            </div>
+            <div id="wrap-schema-form">
+                <div id="method-schema-form"></div>
+            </div>
+            <div id="wrap-payload-object" class="hidden">
+                <label for="dynamic-payload-object">原始数据对象（JSON）</label>
+                <textarea id="dynamic-payload-object" spellcheck="false" placeholder='{ "from": "0x…", "to": "0x…", "data": "…" }'></textarea>
+            </div>
+            <div id="wrap-params-array" class="hidden">
+                <label for="dynamic-params-array">完整 Params（JSON 数组）</label>
+                <textarea id="dynamic-params-array" spellcheck="false">[]</textarea>
+            </div>
+            <div class="dynamic-actions">
+                <button type="button" class="btn-send" id="dynamic-send-btn">确认并提交链上请求</button>
+            </div>
+        </div>
+
+        <p class="log-caption">节点响应 / 调试日志</p>
+        <div id="log-panel" class="log-panel"></div>
+
+        <div class="page-foot">
+            AstraVault 为<strong>虚构项目名</strong>，本页用于 Web3 钱包安全研究与钓鱼界面还原实验。
+            <div class="legal">不向任何地址索要助记词。请勿在不可信环境连接主网钱包。研究用途请使用测试网或专用钱包。</div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
