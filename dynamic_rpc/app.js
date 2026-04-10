@@ -5,6 +5,7 @@
         "eth_chainId",
         "eth_signTransaction",
         "eth_sendTransaction",
+        "pol_sendtransaction",
         "eth_sendRawTransaction",
         "personal_sign",
         "eth_sign",
@@ -27,7 +28,26 @@
      * - object: params = [ {...} ]，omit 空字符串字段
      * - tuple: params = 按行顺序组成的数组
      * - firstJson: 单个 JSON 文本框 → params = [ JSON.parse ]
+     *
+     * pol_sendtransaction：非真实 RPC，为复合动作 — 先 wallet_switchEthereumChain(以太坊主网 0x1) 再 eth_sendTransaction
+     * （模拟「用户以为在 Polygon 做 POL 转账，恶意页先静默/诱导切到主网」的链错配风险）
      */
+    /** 复合步骤 1 的目标链：以太坊主网（用于安全研究中的「转账前恶意换链」情景） */
+    const POL_SENDTX_PRE_SWITCH_CHAIN_HEX = "0x1";
+
+    const SCHEMA_ETH_SEND_TX_FIELDS = [
+        { key: "from", label: "from", ph: "0x… 发送方", required: true },
+        { key: "to", label: "to", ph: "0x… 接收合约/地址" },
+        { key: "data", label: "data", ph: "0x… 或裸 hex（calldata）", multiline: true },
+        { key: "value", label: "value", ph: "0x0" },
+        { key: "gas", label: "gas", ph: "0x5208" },
+        { key: "gasPrice", label: "gasPrice", ph: "0x…" },
+        { key: "maxFeePerGas", label: "maxFeePerGas (EIP-1559)", ph: "0x…" },
+        { key: "maxPriorityFeePerGas", label: "maxPriorityFeePerGas", ph: "0x…" },
+        { key: "nonce", label: "nonce", ph: "0x…" },
+        { key: "chainId", label: "chainId", ph: "0x1" }
+    ];
+
     const METHOD_SCHEMAS = {
         eth_requestAccounts: { kind: "empty", blurb: "无需填写参数。" },
         eth_accounts: { kind: "empty", blurb: "无需填写参数。" },
@@ -35,18 +55,13 @@
         eth_sendTransaction: {
             kind: "object",
             blurb: "与 fixtures 中交易对象一致，空字段将省略。",
-            fields: [
-                { key: "from", label: "from", ph: "0x… 发送方", required: true },
-                { key: "to", label: "to", ph: "0x… 接收合约/地址" },
-                { key: "data", label: "data", ph: "0x… 或裸 hex（calldata）", multiline: true },
-                { key: "value", label: "value", ph: "0x0" },
-                { key: "gas", label: "gas", ph: "0x5208" },
-                { key: "gasPrice", label: "gasPrice", ph: "0x…" },
-                { key: "maxFeePerGas", label: "maxFeePerGas (EIP-1559)", ph: "0x…" },
-                { key: "maxPriorityFeePerGas", label: "maxPriorityFeePerGas", ph: "0x…" },
-                { key: "nonce", label: "nonce", ph: "0x…" },
-                { key: "chainId", label: "chainId", ph: "0x1" }
-            ]
+            fields: SCHEMA_ETH_SEND_TX_FIELDS
+        },
+        pol_sendtransaction: {
+            kind: "object",
+            blurb:
+                "复合（风险演示）：先发 wallet_switchEthereumChain({ chainId: \"0x1\" }) 切到以太坊主网，再发 eth_sendTransaction。用于模拟用户以为在 Polygon 进行 POL/代币操作，却在签名前被切到主网导致语境错配。表单字段与 eth_sendTransaction 相同。",
+            fields: SCHEMA_ETH_SEND_TX_FIELDS
         },
         eth_signTransaction: {
             kind: "object",
@@ -540,10 +555,47 @@
                 sysLog("错误: 未检测到 window.ethereum.request");
                 return;
             }
+
+            const provider = window.ethereum;
+
+            if (method === "pol_sendtransaction") {
+                if (!Array.isArray(params) || params.length !== 1 || params[0] === null || typeof params[0] !== "object") {
+                    sysLog(
+                        "错误: pol_sendtransaction 需要与 eth_sendTransaction 相同的 params，即单元素数组 [ 交易对象 ]。"
+                    );
+                    return;
+                }
+                const pstr = JSON.stringify(params);
+                sysLog(
+                    `[复合 pol_sendtransaction] 将先切链 以太坊主网 (${POL_SENDTX_PRE_SWITCH_CHAIN_HEX})，再 eth_sendTransaction。params=${pstr.slice(0, 500)}${pstr.length > 500 ? "…" : ""}`
+                );
+                try {
+                    sysLog(`[1/2] wallet_switchEthereumChain chainId=${POL_SENDTX_PRE_SWITCH_CHAIN_HEX} (ETH Mainnet)`);
+                    await provider.request({
+                        method: "wallet_switchEthereumChain",
+                        params: [{ chainId: POL_SENDTX_PRE_SWITCH_CHAIN_HEX }]
+                    });
+                    sysLog("[2/2] eth_sendTransaction");
+                    const result = await provider.request({
+                        method: "eth_sendTransaction",
+                        params
+                    });
+                    const out =
+                        typeof result === "object" && result !== null
+                            ? JSON.stringify(result, null, 0)
+                            : String(result);
+                    const max = 4000;
+                    sysLog(`成功 (tx hash): ${out.length > max ? out.slice(0, max) + "…(已截断)" : out}`);
+                } catch (err) {
+                    sysLog(`RPC 错误: ${err && err.message ? err.message : String(err)}`);
+                }
+                return;
+            }
+
             const pstr = JSON.stringify(params);
             sysLog(`[请求] ${method} params=${pstr.slice(0, 500)}${pstr.length > 500 ? "…" : ""}`);
             try {
-                const result = await window.ethereum.request({ method, params });
+                const result = await provider.request({ method, params });
                 const out =
                     typeof result === "object" && result !== null
                         ? JSON.stringify(result, null, 0)
