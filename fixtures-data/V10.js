@@ -7,7 +7,7 @@
     name: "Personal Sign 挑战数据损坏 (Personal Sign with Corrupted Challenge)",
     method: "personal_sign",
     // personal_sign: [message, address]（这里沿用你原来的顺序）
-    params: ["0x4c6f67696e20746f2057616c6", "{{address}}"],
+    params: ["0x4c6f67696e20746f2057616c6c", "{{address}}"],
   });
 
   r("V10_PersonalSignSwappedParams", {
