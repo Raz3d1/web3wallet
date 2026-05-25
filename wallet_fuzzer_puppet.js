@@ -143,11 +143,21 @@ class WalletFuzzerPuppet {
    */
   _handleIncomingPayload(data) {
     try {
-      const payload = JSON.parse(data);
-      this._log("INFO", "Received payload from Fuzzer:");
-      this._log("PAYLOAD", payload);
+      const envelope = JSON.parse(data);
+      this._log("INFO", "Received message from Fuzzer:");
+      this._log("PAYLOAD", envelope);
 
-      // Validate payload structure
+      // Control message from backend (e.g. welcome on connect)
+      if (envelope.status && !envelope.method && !envelope.mutation) {
+        this._log("INFO", `Fuzzer control: ${envelope.message || envelope.status}`);
+        return;
+      }
+
+      // Backend wraps RPC in { mutation: { method, params }, test_id, ... }
+      const payload = envelope.mutation && typeof envelope.mutation === "object"
+        ? envelope.mutation
+        : envelope;
+
       if (!payload.method) {
         throw new Error("Payload missing required 'method' field");
       }
@@ -156,8 +166,18 @@ class WalletFuzzerPuppet {
         throw new Error("Payload 'params' must be an array");
       }
 
-      // Forward to wallet
-      this._forwardToWallet(payload);
+      const rpcPayload = {
+        method: payload.method,
+        params: payload.params
+      };
+      if (envelope.test_id) {
+        rpcPayload.test_id = envelope.test_id;
+      }
+      if (envelope.strategy) {
+        rpcPayload.strategy = envelope.strategy;
+      }
+
+      this._forwardToWallet(rpcPayload);
     } catch (error) {
       this._log("ERROR", `Failed to parse incoming payload: ${error.message}`);
       this._sendFeedback({

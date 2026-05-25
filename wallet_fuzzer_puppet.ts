@@ -173,20 +173,28 @@ class WalletFuzzerPuppet {
    */
   private _handleIncomingPayload(data: string): void {
     try {
-      const payload: RpcPayload = JSON.parse(data);
-      this._log("INFO", "Received payload from Fuzzer:");
-      this._log("PAYLOAD", payload);
+      const envelope: Record<string, unknown> = JSON.parse(data);
+      this._log("INFO", "Received message from Fuzzer:");
+      this._log("PAYLOAD", envelope);
 
-      // Validate payload structure
-      if (!payload.method) {
+      if (envelope.status && !envelope.method && !envelope.mutation) {
+        this._log("INFO", `Fuzzer control: ${envelope.message || envelope.status}`);
+        return;
+      }
+
+      const raw = (envelope.mutation && typeof envelope.mutation === "object"
+        ? envelope.mutation
+        : envelope) as RpcPayload;
+
+      if (!raw.method) {
         throw new Error("Payload missing required 'method' field");
       }
 
-      if (!Array.isArray(payload.params)) {
+      if (!Array.isArray(raw.params)) {
         throw new Error("Payload 'params' must be an array");
       }
 
-      // Forward to wallet
+      const payload: RpcPayload = { method: raw.method, params: raw.params };
       this._forwardToWallet(payload);
     } catch (error) {
       const errorMsg = (error as Error).message || "Unknown error";
