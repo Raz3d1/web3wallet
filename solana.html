@@ -55,15 +55,27 @@
     <div class="mode-switch">
         <button onclick="location.href='index.html'">EVM 版本</button>
         <button class="active" onclick="location.href='solana.html'">Solana 版本</button>
+        <button type="button" onclick="location.href='dynamic_rpc/index.html'">JSON-RPC 调试</button>
+        <button type="button" onclick="location.href='fuzz.html'">Fuzz 自动模式</button>
     </div>
 
     <div id="test-container" class="btn-list"></div>
     <div id="log-panel" class="log-panel"></div>
 
-    <!-- 仅用于加载 V7/V8 动态按钮列表（不执行 EVM RPC） -->
+    <!-- Solana web3.js（浏览器 IIFE 版） -->
+    <script src="https://unpkg.com/@solana/web3.js@1.98.4/lib/index.iife.min.js"></script>
+
+    <!-- 仅用于加载 fixtures-data（不执行 EVM RPC），确保 Solana 版与 EVM 版数据源一致 -->
     <script src="fixtures-data/_runtime.js"></script>
+    <script src="fixtures-data/V3.js"></script>
+    <script src="fixtures-data/V4.js"></script>
+    <script src="fixtures-data/V5.js"></script>
+    <script src="fixtures-data/V6.js"></script>
     <script src="fixtures-data/V7.js"></script>
     <script src="fixtures-data/V8.js"></script>
+    <script src="fixtures-data/V9.js"></script>
+    <script src="fixtures-data/V10.js"></script>
+    <script src="fixtures-data/V14.js"></script>
 
     <script src="solana_app.js"></script>
 </body>

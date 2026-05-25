@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fuzz 自动模式 · Web3 钱包测试</title>
+    <style>
+    body { background: #f4f7f6; padding: 15px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+
+    .mode-switch {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: center;
+        margin: 6px 0 14px 0;
+    }
+    .mode-switch button {
+        border: 1px solid #dadce0;
+        background: #fff;
+        color: #202124;
+        padding: 8px 12px;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 600;
+    }
+    .mode-switch button.active {
+        border-color: #1a73e8;
+        color: #1a73e8;
+        box-shadow: 0 2px 8px rgba(26,115,232,0.12);
+    }
+
+    .page-title {
+        text-align: center;
+        color: #1a73e8;
+        font-size: 22px;
+        font-weight: bold;
+        margin-top: 10px;
+        margin-bottom: 8px;
+    }
+    .page-subtitle {
+        text-align: center;
+        color: #5f6368;
+        font-size: 13px;
+        margin-bottom: 16px;
+    }
+
+    .card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        padding: 15px;
+        margin-bottom: 14px;
+    }
+    .card-title {
+        font-size: 16px;
+        font-weight: bold;
+        color: #1a73e8;
+        border-bottom: 2px solid #e8f0fe;
+        padding-bottom: 8px;
+        margin-bottom: 12px;
+    }
+
+    .warning-box {
+        background: #fef7e0;
+        border: 1px solid #f9ab00;
+        color: #5f4200;
+        padding: 12px;
+        border-radius: 8px;
+        font-size: 12px;
+        line-height: 1.5;
+        margin-bottom: 12px;
+    }
+    .warning-box strong { display: block; margin-bottom: 4px; }
+
+    .hint-list {
+        font-size: 12px;
+        color: #5f6368;
+        line-height: 1.6;
+        margin: 0;
+        padding-left: 18px;
+    }
+
+    .config-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #202124;
+        margin-bottom: 6px;
+    }
+    input[type="text"] {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #dadce0;
+        border-radius: 6px;
+        font-family: monospace;
+        font-size: 12px;
+        box-sizing: border-box;
+    }
+    input[type="text"]:focus {
+        outline: none;
+        border-color: #1a73e8;
+        box-shadow: 0 0 0 3px rgba(26,115,232,0.12);
+    }
+
+    .status-card {
+        background: #f8f9fa;
+        border-left: 4px solid #dadce0;
+        padding: 12px;
+        border-radius: 8px;
+        font-size: 12px;
+        color: #5f6368;
+    }
+    .status-card.connected { border-left-color: #34a853; background: #e6f4ea; }
+    .status-card.disconnected { border-left-color: #ea4335; background: #fce8e6; }
+    .status-card.reconnecting { border-left-color: #f9ab00; background: #fef7e0; }
+
+    .status-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        color: #202124;
+        margin-bottom: 8px;
+    }
+    .status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #dadce0;
+    }
+    .status-dot.connected { background: #34a853; }
+    .status-dot.disconnected { background: #ea4335; }
+    .status-dot.reconnecting { background: #f9ab00; }
+
+    .btn-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 12px;
+    }
+    .btn {
+        flex: 1;
+        min-width: 100px;
+        padding: 11px 14px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        border: 1px solid #1a73e8;
+        cursor: pointer;
+    }
+    .btn-primary { background: #1a73e8; color: #fff; }
+    .btn-secondary { background: #fff; color: #1a73e8; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .log-panel {
+        background: #000;
+        color: #0f0;
+        padding: 10px;
+        border-radius: 8px;
+        height: 220px;
+        overflow-y: auto;
+        font-family: monospace;
+        font-size: 11px;
+        line-height: 1.4;
+    }
+    .log-line { margin: 2px 0; white-space: pre-wrap; word-break: break-all; }
+    .log-info { color: #8ab4f8; }
+    .log-success { color: #81c995; }
+    .log-warn { color: #fdd663; }
+    .log-error { color: #f28b82; }
+    .log-payload { color: #d7aefb; }
+
+    .github-footer {
+        text-align: center;
+        margin-top: 24px;
+        margin-bottom: 15px;
+    }
+    .github-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: #5f6368;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 500;
+        padding: 8px 16px;
+        border-radius: 20px;
+        background: white;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+    </style>
+</head>
+<body>
+    <h1 class="page-title">Fuzz 自动模式</h1>
+    <p class="page-subtitle">通过 WebSocket 接收 Python Fuzzer 变异 RPC，自动转发至钱包</p>
+
+    <div class="mode-switch">
+        <button onclick="location.href='index.html'">EVM 版本</button>
+        <button onclick="location.href='solana.html'">Solana 版本</button>
+        <button type="button" onclick="location.href='dynamic_rpc/index.html'">JSON-RPC 调试</button>
+        <button class="active" onclick="location.href='fuzz.html'">Fuzz 自动模式</button>
+    </div>
+
+    <div class="card">
+        <div class="warning-box">
+            <strong>⚠️ 仅用于安全测试</strong>
+            本页面会无条件将后端推送的 RPC 请求转发给已连接钱包。请仅使用测试钱包，勿在主网真实资产上运行。
+        </div>
+        <ol class="hint-list">
+            <li>本地运行：<code>python fuzzer_backend_example.py</code></li>
+            <li>暴露端口：<code>ngrok http 8765</code>，将地址改为 <code>wss://...</code></li>
+            <li>手机钱包打开本页 → 连接钱包 → 启动 Puppet</li>
+        </ol>
+    </div>
+
+    <div class="card">
+        <div class="card-title">连接配置</div>
+        <div class="config-label">Fuzzer WebSocket 地址</div>
+        <input type="text" id="fuzzerUrl" placeholder="wss://xxxx.ngrok-free.app">
+        <div class="btn-row">
+            <button class="btn btn-secondary" id="connectWalletBtn" onclick="connectWallet()">连接钱包</button>
+            <button class="btn btn-primary" id="startBtn" onclick="startPuppet()">启动 Puppet</button>
+            <button class="btn btn-secondary" id="stopBtn" onclick="stopPuppet()" disabled>停止</button>
+            <button class="btn btn-secondary" id="statusBtn" onclick="showDetailedStatus()">详情</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">运行状态</div>
+        <div class="status-card disconnected" id="statusCard">
+            <div class="status-row">
+                <span class="status-dot disconnected" id="statusDot"></span>
+                <span id="statusText">未连接 Fuzzer</span>
+            </div>
+            <div>钱包：<span id="walletValue">检测中…</span></div>
+            <div>账户：<span id="accountValue">未连接</span></div>
+            <div>重连次数：<span id="attemptsValue">0</span></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">运行日志</div>
+        <div class="log-panel" id="logContainer"></div>
+    </div>
+
+    <div class="github-footer">
+        <a href="https://github.com/Raz3d1/web3wallet" target="_blank" class="github-link">Raz3d1/web3wallet</a>
+    </div>
+
+    <script src="wallet_fuzzer_puppet.js"></script>
+    <script>
+    const STORAGE_KEY = 'wallet_fuzzer_ws_url';
+    let puppet = null;
+    let statusTimer = null;
+    let logCount = 0;
+    const MAX_LOGS = 120;
+    let connectedAccount = null;
+
+    function logToUI(level, message) {
+        const logContainer = document.getElementById('logContainer');
+        const logLine = document.createElement('div');
+        logLine.className = 'log-line log-' + level.toLowerCase();
+        const timestamp = new Date().toLocaleTimeString();
+        logLine.textContent = timestamp + ' [' + level + '] ' + message;
+        logContainer.appendChild(logLine);
+        logContainer.scrollTop = logContainer.scrollHeight;
+        logCount++;
+        if (logCount > MAX_LOGS && logContainer.firstChild) {
+            logContainer.firstChild.remove();
+            logCount--;
+        }
+    }
+
+    function saveFuzzerUrl(url) {
+        try { localStorage.setItem(STORAGE_KEY, url); } catch (e) { /* ignore */ }
+    }
+
+    async function connectWallet() {
+        if (!window.ethereum) {
+            logToUI('ERROR', '未检测到 window.ethereum，请在钱包内置浏览器中打开');
+            document.getElementById('walletValue').textContent = '不可用';
+            return;
+        }
+        try {
+            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            connectedAccount = accounts[0];
+            document.getElementById('walletValue').textContent = '已注入';
+            document.getElementById('accountValue').textContent = connectedAccount;
+            logToUI('SUCCESS', '钱包已连接: ' + connectedAccount);
+        } catch (e) {
+            logToUI('ERROR', '连接被拒绝: ' + (e.message || String(e)));
+        }
+    }
+
+    function interceptPuppetLogs() {
+        if (window.__puppetLogHooked) return;
+        window.__puppetLogHooked = true;
+        const originalLog = console.log;
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            const message = args[0];
+            if (typeof message === 'string' && message.includes('[WalletFuzzerPuppet')) {
+                const level = (message.match(/\[(INFO|SUCCESS|WARN|ERROR|PAYLOAD)\]/) || ['', 'INFO'])[1];
+                const content = args.slice(1).map(function(arg) {
+                    return typeof arg === 'object' ? JSON.stringify(arg) : String(arg);
+                }).join(' ');
+                logToUI(level, content);
+            }
+        };
+    }
+
+    function startPuppet() {
+        const fuzzerUrl = document.getElementById('fuzzerUrl').value.trim();
+        if (!fuzzerUrl) {
+            alert('请填写 Fuzzer WebSocket 地址（wss://...）');
+            return;
+        }
+        if (!fuzzerUrl.startsWith('ws://') && !fuzzerUrl.startsWith('wss://')) {
+            alert('WebSocket 地址须以 ws:// 或 wss:// 开头');
+            return;
+        }
+
+        saveFuzzerUrl(fuzzerUrl);
+        if (puppet) puppet.stop();
+
+        puppet = new WalletFuzzerPuppet(fuzzerUrl, {
+            reconnectInterval: 3000,
+            maxReconnectAttempts: -1,
+            verbose: true
+        });
+        interceptPuppetLogs();
+        puppet.start();
+        window.puppet = puppet;
+
+        document.getElementById('startBtn').disabled = true;
+        document.getElementById('stopBtn').disabled = false;
+        document.getElementById('fuzzerUrl').disabled = true;
+
+        if (statusTimer) clearInterval(statusTimer);
+        statusTimer = setInterval(updateStatusUI, 1000);
+        updateStatusUI();
+        logToUI('INFO', 'Puppet 已启动，连接: ' + fuzzerUrl);
+    }
+
+    function stopPuppet() {
+        if (puppet) {
+            puppet.stop();
+            puppet = null;
+            window.puppet = null;
+        }
+        if (statusTimer) {
+            clearInterval(statusTimer);
+            statusTimer = null;
+        }
+        document.getElementById('startBtn').disabled = false;
+        document.getElementById('stopBtn').disabled = true;
+        document.getElementById('fuzzerUrl').disabled = false;
+        document.getElementById('statusText').textContent = '未连接 Fuzzer';
+        document.getElementById('statusValue').textContent = 'disconnected';
+        document.getElementById('statusCard').className = 'status-card disconnected';
+        document.getElementById('statusDot').className = 'status-dot disconnected';
+        logToUI('INFO', 'Puppet 已停止');
+    }
+
+    function updateStatusUI() {
+        if (!puppet) return;
+        const status = puppet.getStatus();
+        const detailed = puppet.getDetailedStatus();
+        const labels = {
+            connected: '已连接 Fuzzer',
+            disconnected: '未连接 Fuzzer',
+            reconnecting: '正在重连…'
+        };
+        document.getElementById('statusText').textContent = labels[status] || status;
+        document.getElementById('statusValue').textContent = status;
+        document.getElementById('attemptsValue').textContent = String(detailed.reconnectAttempts);
+        document.getElementById('walletValue').textContent = detailed.walletAvailable ? '已注入' : '不可用';
+        document.getElementById('statusCard').className = 'status-card ' + status;
+        document.getElementById('statusDot').className = 'status-dot ' + status;
+    }
+
+    function showDetailedStatus() {
+        if (!puppet) {
+            alert('请先启动 Puppet');
+            return;
+        }
+        const d = puppet.getDetailedStatus();
+        const states = { 0: 'CONNECTING', 1: 'OPEN', 2: 'CLOSING', 3: 'CLOSED' };
+        alert(
+            '状态: ' + d.status + '\n' +
+            'Fuzzer URL: ' + d.fuzzerUrl + '\n' +
+            '重连次数: ' + d.reconnectAttempts + '\n' +
+            '钱包可用: ' + (d.walletAvailable ? '是' : '否') + '\n' +
+            'WebSocket: ' + (states[d.wsReadyState] || '未知')
+        );
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) document.getElementById('fuzzerUrl').value = saved;
+
+        logToUI('INFO', 'Fuzz 模式已加载，请先连接钱包再启动 Puppet');
+        if (window.ethereum) {
+            logToUI('SUCCESS', '检测到 window.ethereum');
+            connectWallet();
+        } else {
+            logToUI('WARN', '未检测到钱包 Provider');
+            document.getElementById('walletValue').textContent = '不可用';
+        }
+    });
+    </script>
+</body>
+</html>
