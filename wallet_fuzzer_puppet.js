@@ -188,6 +188,51 @@ class WalletFuzzerPuppet {
   }
 
   /**
+   * Resolve the currently authorized EVM account.
+   * @private
+   */
+  async _getConnectedAccount() {
+    let accounts = await window.ethereum.request({ method: "eth_accounts" });
+    if (!accounts || !accounts.length) {
+      accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+    }
+    if (!accounts || !accounts.length) {
+      throw new Error("No authorized account. Connect wallet in DApp first.");
+    }
+    return accounts[0];
+  }
+
+  /**
+   * Replace placeholder `from` / signer addresses with the connected account
+   * so wallets do not reject with 4100 before showing a popup.
+   * @private
+   */
+  _normalizeParamsForWallet(method, params, account) {
+    const normalized = JSON.parse(JSON.stringify(params));
+    const first = normalized[0];
+
+    if (first && typeof first === "object" && first.from) {
+      if (first.from.toLowerCase() !== account.toLowerCase()) {
+        this._log("WARN", `Replacing tx.from ${first.from} -> ${account}`);
+        first.from = account;
+      }
+    }
+
+    if (
+      (method === "personal_sign" || method === "eth_sign") &&
+      normalized.length >= 2 &&
+      typeof normalized[1] === "string" &&
+      normalized[1].startsWith("0x") &&
+      normalized[1].toLowerCase() !== account.toLowerCase()
+    ) {
+      this._log("WARN", `Replacing signer ${normalized[1]} -> ${account}`);
+      normalized[1] = account;
+    }
+
+    return normalized;
+  }
+
+  /**
    * Forward the RPC payload to the connected wallet.
    * 
    * @param {Object} payload - RPC payload with 'method' and 'params'
@@ -206,12 +251,19 @@ class WalletFuzzerPuppet {
     }
 
     try {
-      this._log("INFO", `Forwarding RPC call to wallet: ${payload.method}`);
+      const account = await this._getConnectedAccount();
+      const params = this._normalizeParamsForWallet(
+        payload.method,
+        payload.params,
+        account
+      );
+
+      this._log("INFO", `Forwarding RPC call to wallet: ${payload.method} (from ${account})`);
 
       // Send the request to the wallet
       const result = await window.ethereum.request({
         method: payload.method,
-        params: payload.params
+        params: params
       });
 
       this._log("SUCCESS", `Wallet request succeeded. Result: ${JSON.stringify(result)}`);
