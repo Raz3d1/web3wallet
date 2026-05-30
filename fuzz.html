@@ -395,16 +395,32 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
+        const params = new URLSearchParams(window.location.search);
+        const wsParam = params.get('ws');
+        const autostart = params.get('autostart') === '1';
+
         const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) document.getElementById('fuzzerUrl').value = saved;
+        if (wsParam) {
+            document.getElementById('fuzzerUrl').value = wsParam;
+        } else if (saved) {
+            document.getElementById('fuzzerUrl').value = saved;
+        }
 
         logToUI('INFO', 'Fuzz 模式已加载，请先连接钱包再启动 Puppet');
         if (window.ethereum) {
             logToUI('SUCCESS', '检测到 window.ethereum');
-            connectWallet();
+            connectWallet().then(function() {
+                if (autostart && wsParam) {
+                    setTimeout(startPuppet, 1200);
+                    logToUI('INFO', 'URL autostart=1，将自动启动 Puppet');
+                }
+            });
         } else {
             logToUI('WARN', '未检测到钱包 Provider');
             document.getElementById('walletValue').textContent = '不可用';
+            if (autostart && wsParam) {
+                setTimeout(startPuppet, 1200);
+            }
         }
     });
     </script>

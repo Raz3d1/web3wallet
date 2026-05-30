@@ -158,12 +158,19 @@ class WalletFuzzerPuppet {
         ? envelope.mutation
         : envelope;
 
+      if (payload.is_sequence && Array.isArray(payload.sequence)) {
+        if (envelope.test_id) payload.test_id = envelope.test_id;
+        if (envelope.strategy) payload.strategy = envelope.strategy;
+        this._forwardSequence(payload);
+        return;
+      }
+
       if (!payload.method) {
         throw new Error("Payload missing required 'method' field");
       }
 
-      if (!Array.isArray(payload.params)) {
-        throw new Error("Payload 'params' must be an array");
+      if (payload.params === undefined) {
+        throw new Error("Payload missing 'params'");
       }
 
       const rpcPayload = {
@@ -230,6 +237,46 @@ class WalletFuzzerPuppet {
     }
 
     return normalized;
+  }
+
+  /**
+   * Execute sequence hijacking: rapid-fire multiple RPC requests.
+   * @param {Object} payload - { is_sequence, sequence, delay_ms }
+   * @private
+   */
+  async _forwardSequence(payload) {
+    if (!window.ethereum) {
+      this._log("ERROR", "window.ethereum is not available.");
+      this._sendFeedback({ status: "error", message: "No wallet" });
+      return;
+    }
+
+    const delay = payload.delay_ms || 50;
+    this._log(
+      "WARN",
+      `执行时序劫持攻击，连续 ${payload.sequence.length} 个请求（间隔 ${delay}ms）`
+    );
+
+    try {
+      const account = await this._getConnectedAccount();
+      for (const req of payload.sequence) {
+        const params = this._normalizeParamsForWallet(
+          req.method,
+          req.params,
+          account
+        );
+        window.ethereum
+          .request({ method: req.method, params })
+          .catch((e) => this._log("ERROR", `[sequence] ${req.method}: ${e.message}`));
+        await new Promise((r) => setTimeout(r, delay));
+      }
+      this._sendFeedback({ status: "success", action: "sequence_invoked" });
+    } catch (error) {
+      this._sendFeedback({
+        status: "error",
+        message: error.message || "Sequence failed"
+      });
+    }
   }
 
   /**
