@@ -39,6 +39,8 @@ class WalletFuzzerPuppet {
     this.reconnectAttempts = 0;
     this.reconnectTimer = null;
     this.isManuallyClosed = false;
+    this._currentTestId = null;
+    this._keepaliveTimer = null;
 
     // Validate window.ethereum exists
     if (typeof window === "undefined") {
@@ -66,6 +68,7 @@ class WalletFuzzerPuppet {
   stop() {
     this._log("INFO", "Stopping Wallet Fuzzer Puppet");
     this.isManuallyClosed = true;
+    this._stopKeepalive();
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
@@ -87,6 +90,7 @@ class WalletFuzzerPuppet {
       this.ws.onopen = () => {
         this._log("SUCCESS", "Connected to Fuzzer WebSocket");
         this.reconnectAttempts = 0; // Reset reconnect attempts on successful connection
+        this._startKeepalive();
       };
 
       this.ws.onmessage = (event) => {
@@ -99,6 +103,7 @@ class WalletFuzzerPuppet {
 
       this.ws.onclose = () => {
         this._log("WARN", "WebSocket connection closed");
+        this._stopKeepalive();
         if (!this.isManuallyClosed) {
           this._scheduleReconnect();
         }
@@ -152,6 +157,8 @@ class WalletFuzzerPuppet {
         this._log("INFO", `Fuzzer control: ${envelope.message || envelope.status}`);
         return;
       }
+
+      this._currentTestId = envelope.test_id || null;
 
       // Backend wraps RPC in { mutation: { method, params }, test_id, ... }
       const payload = envelope.mutation && typeof envelope.mutation === "object"
@@ -338,21 +345,54 @@ class WalletFuzzerPuppet {
   }
 
   /**
+   * Periodic ping to keep WebSocket alive during long campaigns.
+   * @private
+   */
+  _startKeepalive() {
+    this._stopKeepalive();
+    this._keepaliveTimer = setInterval(() => {
+      if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+        return;
+      }
+      try {
+        this.ws.send(JSON.stringify({ type: "ping", ts: Date.now() }));
+      } catch (error) {
+        this._log("WARN", `Keepalive ping failed: ${error.message}`);
+      }
+    }, 25000);
+  }
+
+  /**
+   * @private
+   */
+  _stopKeepalive() {
+    if (this._keepaliveTimer) {
+      clearInterval(this._keepaliveTimer);
+      this._keepaliveTimer = null;
+    }
+  }
+
+  /**
    * Send feedback to the Fuzzer via WebSocket.
    * 
    * @param {Object} feedbackData - Feedback object to send back to Fuzzer
    * @private
    */
-  _sendFeedback(feedbackData) {
+  _sendFeedback(feedbackData, testId) {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       this._log("WARN", "Cannot send feedback: WebSocket not connected");
       return;
     }
 
+    const resolvedTestId = testId !== undefined ? testId : this._currentTestId;
+    const payload = resolvedTestId
+      ? { ...feedbackData, test_id: resolvedTestId }
+      : feedbackData;
+
     try {
-      const message = JSON.stringify(feedbackData);
+      const message = JSON.stringify(payload);
       this.ws.send(message);
-      this._log("INFO", "Sent feedback to Fuzzer:", feedbackData);
+      this._log("INFO", "Sent feedback to Fuzzer:", payload);
     } catch (error) {
       this._log("ERROR", `Failed to send feedback: ${error.message}`);
     }
