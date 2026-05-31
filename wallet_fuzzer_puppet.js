@@ -152,6 +152,11 @@ class WalletFuzzerPuppet {
       this._log("INFO", "Received message from Fuzzer:");
       this._log("PAYLOAD", envelope);
 
+      if (envelope.type === "server_ping") {
+        this._sendFeedback({ status: "pong", ping_id: envelope.ping_id });
+        return;
+      }
+
       // Control message from backend (e.g. welcome on connect)
       if (envelope.status && !envelope.method && !envelope.mutation) {
         this._log("INFO", `Fuzzer control: ${envelope.message || envelope.status}`);
