@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>random_1 变异验证 · Trustwallet Campaign</title>
+    <style>
+    body { background: #f4f7f6; padding: 15px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+
+    .mode-switch {
+        display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 6px 0 14px 0;
+    }
+    .mode-switch button {
+        border: 1px solid #dadce0; background: #fff; color: #202124;
+        padding: 8px 12px; border-radius: 999px; font-size: 13px; font-weight: 600;
+    }
+    .mode-switch button.active {
+        border-color: #1a73e8; color: #1a73e8; box-shadow: 0 2px 8px rgba(26,115,232,0.12);
+    }
+
+    .page-title { text-align: center; color: #1a73e8; font-size: 22px; font-weight: bold; margin: 10px 0 6px; }
+    .page-subtitle { text-align: center; color: #5f6368; font-size: 13px; margin-bottom: 16px; }
+
+    .card {
+        background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        padding: 15px; margin-bottom: 14px;
+    }
+    .card-title {
+        font-size: 16px; font-weight: bold; color: #1a73e8;
+        border-bottom: 2px solid #e8f0fe; padding-bottom: 8px; margin-bottom: 12px;
+    }
+
+    .pager {
+        display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    }
+    .pager button {
+        border: 1px solid #1a73e8; background: #fff; color: #1a73e8;
+        padding: 8px 14px; border-radius: 6px; font-weight: 600; cursor: pointer;
+    }
+    .pager button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .pager-info { font-size: 14px; font-weight: 600; color: #202124; text-align: center; flex: 1; }
+
+    .badge-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+    .badge {
+        font-size: 11px; font-weight: 600; padding: 4px 8px; border-radius: 999px;
+        background: #e8f0fe; color: #1a73e8;
+    }
+    .badge.corner { background: #fce8e6; color: #c5221f; }
+    .badge.random { background: #e6f4ea; color: #137333; }
+    .badge.result-x { background: #fce8e6; color: #c5221f; }
+    .badge.result-o { background: #e6f4ea; color: #137333; }
+
+    .case-title { font-size: 18px; font-weight: 700; color: #202124; margin: 0 0 8px; }
+    .case-summary { font-size: 13px; color: #5f6368; line-height: 1.6; margin: 0 0 10px; }
+    .case-mutation {
+        font-family: monospace; font-size: 12px; background: #f8f9fa;
+        border: 1px solid #e0e0e0; border-radius: 6px; padding: 10px;
+        word-break: break-all; margin-bottom: 10px;
+    }
+    .case-note { font-size: 12px; color: #b06000; background: #fef7e0; padding: 8px; border-radius: 6px; margin-bottom: 10px; }
+
+    .thumb-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .thumb {
+        font-size: 11px; color: #5f6368; background: #f1f3f4;
+        padding: 4px 8px; border-radius: 4px; font-family: monospace;
+    }
+
+    .btn-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .btn {
+        flex: 1; min-width: 120px; padding: 11px 14px; border-radius: 6px;
+        font-size: 14px; font-weight: 600; border: 1px solid #1a73e8; cursor: pointer;
+    }
+    .btn-primary { background: #1a73e8; color: #fff; }
+    .btn-secondary { background: #fff; color: #1a73e8; }
+    .btn-warn { background: #fff; color: #c5221f; border-color: #c5221f; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .wallet-bar {
+        font-size: 12px; color: #5f6368; background: #f8f9fa;
+        padding: 10px; border-radius: 8px; margin-bottom: 12px;
+    }
+    .wallet-bar.connected { background: #e6f4ea; color: #137333; }
+
+    details { margin-top: 10px; }
+    details summary { cursor: pointer; font-size: 13px; font-weight: 600; color: #1a73e8; }
+    pre {
+        font-size: 11px; background: #f8f9fa; border: 1px solid #e0e0e0;
+        border-radius: 6px; padding: 10px; overflow-x: auto; white-space: pre-wrap;
+        word-break: break-all;
+    }
+
+    .log-panel {
+        background: #000; color: #0f0; padding: 10px; border-radius: 8px;
+        height: 200px; overflow-y: auto; font-family: monospace; font-size: 11px;
+    }
+    .log-line { margin: 2px 0; white-space: pre-wrap; word-break: break-all; }
+    .log-info { color: #8ab4f8; }
+    .log-success { color: #81c995; }
+    .log-warn { color: #fdd663; }
+    .log-error { color: #f28b82; }
+
+    .case-dots { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 10px; }
+    .case-dot {
+        width: 28px; height: 28px; border-radius: 50%; border: 1px solid #dadce0;
+        background: #fff; color: #5f6368; font-size: 11px; font-weight: 600; cursor: pointer;
+    }
+    .case-dot.active { background: #1a73e8; color: #fff; border-color: #1a73e8; }
+    </style>
+</head>
+<body>
+    <h1 class="page-title">random_1 变异验证</h1>
+    <p class="page-subtitle">精选 7 条 Mutation Case · 支持基线/变异 RPC 手动重放 · 来源 Trustwallet Campaign</p>
+
+    <div class="mode-switch">
+        <button onclick="location.href='index.html'">EVM 版本</button>
+        <button onclick="location.href='solana.html'">Solana 版本</button>
+        <button onclick="location.href='dynamic_rpc/index.html'">JSON-RPC 调试</button>
+        <button onclick="location.href='fuzz.html'">Fuzz 自动模式</button>
+        <button class="active" onclick="location.href='random1_validate.html'">random_1 验证</button>
+    </div>
+
+    <div class="card">
+        <div id="walletBar" class="wallet-bar">钱包：未连接</div>
+        <div class="btn-row">
+            <button class="btn btn-secondary" onclick="connectWallet()">连接钱包</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="pager">
+            <button id="prevBtn" onclick="prevCase()">← 上一条</button>
+            <div class="pager-info" id="pagerInfo">Case #140 · 1 / 7</div>
+            <button id="nextBtn" onclick="nextCase()">下一条 →</button>
+        </div>
+        <div class="case-dots" id="caseDots"></div>
+    </div>
+
+    <div class="card" id="caseCard">
+        <div class="badge-row" id="badgeRow"></div>
+        <h2 class="case-title" id="caseTitle"></h2>
+        <p class="case-summary" id="caseSummary"></p>
+        <div class="case-mutation" id="caseMutation"></div>
+        <div class="case-note" id="caseNote" style="display:none"></div>
+        <div class="thumb-list" id="thumbList"></div>
+
+        <div class="btn-row">
+            <button class="btn btn-secondary" onclick="sendBaseline()">① 发送基线 RPC</button>
+            <button class="btn btn-primary" onclick="sendMutated()">② 发送变异 RPC</button>
+            <button class="btn btn-warn" onclick="sendBoth()">连续发送（基线→变异）</button>
+        </div>
+
+        <details>
+            <summary>查看基线 payload</summary>
+            <pre id="baselineJson"></pre>
+        </details>
+        <details>
+            <summary>查看变异 payload</summary>
+            <pre id="mutatedJson"></pre>
+        </details>
+    </div>
+
+    <div class="card">
+        <div class="card-title">运行日志</div>
+        <div class="log-panel" id="logContainer"></div>
+    </div>
+
+    <script src="fixtures-data/random_1_cases.js"></script>
+    <script>
+    const CASES = window.RANDOM1_CASES || [];
+    let currentIndex = 0;
+    let connectedAccount = null;
+
+    function log(level, msg) {
+        const el = document.getElementById('logContainer');
+        const line = document.createElement('div');
+        line.className = 'log-line log-' + level.toLowerCase();
+        line.textContent = new Date().toLocaleTimeString() + ' [' + level + '] ' + msg;
+        el.appendChild(line);
+        el.scrollTop = el.scrollHeight;
+    }
+
+    function screenshotName(c) {
+        const strat = c.strategy.replace(/[^0-9A-Za-z_-]+/g, '_');
+        return 'mut_' + String(c.id).padStart(5, '0') + '_' + strat + '.png';
+    }
+
+    function renderCase() {
+        const c = CASES[currentIndex];
+        if (!c) return;
+
+        document.getElementById('pagerInfo').textContent =
+            'Case #' + c.id + ' · ' + (currentIndex + 1) + ' / ' + CASES.length;
+        document.getElementById('prevBtn').disabled = currentIndex === 0;
+        document.getElementById('nextBtn').disabled = currentIndex === CASES.length - 1;
+
+        const badges = [
+            '<span class="badge ' + c.mode + '">' + c.mode + '</span>',
+            '<span class="badge">' + c.strategy + '</span>',
+            '<span class="badge">seed: ' + c.seed + '</span>',
+            '<span class="badge">RPC: ' + c.rpc + '</span>',
+            '<span class="badge result-' + c.expectedResult.toLowerCase() + '">历史判定: ' + c.expectedResult + '</span>',
+        ];
+        document.getElementById('badgeRow').innerHTML = badges.join('');
+        document.getElementById('caseTitle').textContent = 'Case #' + c.id + ' — ' + c.title;
+        document.getElementById('caseSummary').textContent = c.summary;
+        document.getElementById('caseMutation').textContent = '变异: ' + c.mutation;
+
+        const noteEl = document.getElementById('caseNote');
+        if (c.note) {
+            noteEl.style.display = 'block';
+            noteEl.textContent = '备注: ' + c.note;
+        } else {
+            noteEl.style.display = 'none';
+        }
+
+        document.getElementById('thumbList').innerHTML =
+            '<span class="thumb">截图: ' + screenshotName(c) + '</span>' +
+            '<span class="thumb">来源: random_1.txt</span>';
+
+        document.getElementById('baselineJson').textContent = JSON.stringify(c.baseline, null, 2);
+        document.getElementById('mutatedJson').textContent = JSON.stringify(c.mutated, null, 2);
+
+        document.querySelectorAll('.case-dot').forEach(function(dot, i) {
+            dot.classList.toggle('active', i === currentIndex);
+        });
+    }
+
+    function buildDots() {
+        const container = document.getElementById('caseDots');
+        container.innerHTML = '';
+        CASES.forEach(function(c, i) {
+            const btn = document.createElement('button');
+            btn.className = 'case-dot' + (i === 0 ? ' active' : '');
+            btn.textContent = c.id;
+            btn.title = 'Case #' + c.id;
+            btn.onclick = function() { currentIndex = i; renderCase(); };
+            container.appendChild(btn);
+        });
+    }
+
+    function prevCase() {
+        if (currentIndex > 0) { currentIndex--; renderCase(); }
+    }
+    function nextCase() {
+        if (currentIndex < CASES.length - 1) { currentIndex++; renderCase(); }
+    }
+
+    async function connectWallet() {
+        if (!window.ethereum) {
+            log('ERROR', '未检测到 window.ethereum');
+            return;
+        }
+        try {
+            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            connectedAccount = accounts[0];
+            const bar = document.getElementById('walletBar');
+            bar.className = 'wallet-bar connected';
+            bar.textContent = '钱包已连接: ' + connectedAccount;
+            log('SUCCESS', '已连接 ' + connectedAccount);
+        } catch (e) {
+            log('ERROR', '连接失败: ' + (e.message || String(e)));
+        }
+    }
+
+    function patchPayload(payload, kind) {
+        const p = JSON.parse(JSON.stringify(payload));
+        const c = CASES[currentIndex];
+
+        if (p.method === 'eth_sendTransaction' && p.params && p.params[0]) {
+            p.params[0].from = connectedAccount;
+        }
+
+        if (p.method === 'personal_sign' && p.params && p.params.length >= 2) {
+            if (kind === 'baseline') {
+                p.params[1] = connectedAccount;
+            } else if (c.id !== 209) {
+                p.params[1] = connectedAccount;
+            }
+        }
+
+        if (p.method === 'eth_sign' && p.params && p.params.length >= 2) {
+            p.params[1] = connectedAccount;
+        }
+
+        return p;
+    }
+
+    async function sendRpc(payload, label) {
+        if (!connectedAccount) {
+            alert('请先连接钱包');
+            return;
+        }
+        if (!window.ethereum) {
+            log('ERROR', 'window.ethereum 不可用');
+            return;
+        }
+        const c = CASES[currentIndex];
+        log('INFO', label + ' Case #' + c.id + ' → ' + payload.method);
+        try {
+            const result = await window.ethereum.request(payload);
+            log('SUCCESS', label + ' 完成: ' + JSON.stringify(result).slice(0, 120));
+        } catch (e) {
+            log('WARN', label + ' 用户拒绝或失败: ' + (e.message || String(e)));
+        }
+    }
+
+    async function sendBaseline() {
+        const c = CASES[currentIndex];
+        await sendRpc(patchPayload(c.baseline, 'baseline'), '基线');
+    }
+
+    async function sendMutated() {
+        const c = CASES[currentIndex];
+        await sendRpc(patchPayload(c.mutated, 'mutated'), '变异');
+    }
+
+    async function sendBoth() {
+        const c = CASES[currentIndex];
+        log('INFO', '连续模式: 先基线后变异 Case #' + c.id);
+        await sendRpc(patchPayload(c.baseline, 'baseline'), '基线');
+        await new Promise(function(r) { setTimeout(r, 1500); });
+        await sendRpc(patchPayload(c.mutated, 'mutated'), '变异');
+    }
+
+    buildDots();
+    renderCase();
+    log('INFO', '已加载 ' + CASES.length + ' 条 random_1 验证用例');
+    </script>
+</body>
+</html>
