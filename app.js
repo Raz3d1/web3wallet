@@ -108,6 +108,7 @@ const testSuite = [
             { name: "切换到 Polygon（0x89）", func: typeof v11_SwitchToPolygonFixture !== "undefined" ? v11_SwitchToPolygonFixture : null },
             { name: "对照组 Polygon eth_sendTransaction", func: typeof v11_PolygonControlEthSendTransactionFixture !== "undefined" ? v11_PolygonControlEthSendTransactionFixture : null },
             { name: "实验组 切主网+eth_sendTransaction", func: typeof v11_PolygonExperimentChainFraudFixture !== "undefined" ? v11_PolygonExperimentChainFraudFixture : null },
+            { name: "Binance pectra升级验证", func: typeof v11_BinancePectraUpgradeFixture !== "undefined" ? v11_BinancePectraUpgradeFixture : null },
             { name: "common_json_rpc eth_chainId", func: typeof v11_CommonJsonRpcEthChainIdFixture !== "undefined" ? v11_CommonJsonRpcEthChainIdFixture : null }
         ]
     }

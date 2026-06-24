@@ -383,4 +383,31 @@
   });
 
   // 实验组第二笔交易与对照组共用同一 fixture（V11_Polygon_ControlEthSendTransaction），仅多一步前置 wallet_switchEthereumChain
+
+  // EIP-7702 / Pectra：type 0x4 + authorizationList + calldata
+  r("V11_Binance_Pectra_Upgrade", {
+    id: "V11_Binance_Pectra_Upgrade",
+    name: "Binance pectra升级验证",
+    method: "eth_sendTransaction",
+    params: [
+      {
+        type: "0x4",
+        from: "{{address}}",
+        to: "0x17eed3ad6051F833A7D0Ccd0E5a973dFe4EBa702",
+        value: "0x0",
+        data: "0x05844f1c",
+        gas: "0x5208",
+        authorizationList: [
+          {
+            chainId: "0xaa36a7",
+            address: "0x890B4e2808C13010B90E66504A29A0082f4D1dBB",
+            nonce: "0x0",
+            yParity: "0x1",
+            r: "0x1b9271a2a4b870e28f73111b0e50f592d37c02b28c115715fb66cd3f91dd93f2",
+            s: "0x4c2b834468f9a2e63c500abdf93f0b0933ff2fa809d0a64e16ff43dbf5e2fb42",
+          },
+        ],
+      },
+    ],
+  });
 })();

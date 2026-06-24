@@ -174,6 +174,11 @@
     };
   }
 
+  /** EIP-7702 / Pectra：type 0x4 eth_sendTransaction + authorizationList */
+  function v11_BinancePectraUpgradeFixture(addr) {
+    return g.buildFixtureFromData("V11_Binance_Pectra_Upgrade", ethVars(addr));
+  }
+
   g.v11_RequestAccountsFixture = v11_RequestAccountsFixture;
   g.v11_RequestAccountsFullFixture = v11_RequestAccountsFullFixture;
   g.v11_SignTransactionFixture = v11_SignTransactionFixture;
@@ -193,4 +198,5 @@
   g.v11_SwitchToPolygonFixture = v11_SwitchToPolygonFixture;
   g.v11_PolygonControlEthSendTransactionFixture = v11_PolygonControlEthSendTransactionFixture;
   g.v11_PolygonExperimentChainFraudFixture = v11_PolygonExperimentChainFraudFixture;
+  g.v11_BinancePectraUpgradeFixture = v11_BinancePectraUpgradeFixture;
 })();
