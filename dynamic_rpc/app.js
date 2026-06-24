@@ -595,13 +595,18 @@
             const pstr = JSON.stringify(params);
             sysLog(`[请求] ${method} params=${pstr.slice(0, 500)}${pstr.length > 500 ? "…" : ""}`);
             try {
-                const result = await provider.request({ method, params });
-                const out =
-                    typeof result === "object" && result !== null
-                        ? JSON.stringify(result, null, 0)
-                        : String(result);
-                const max = 4000;
-                sysLog(`成功: ${out.length > max ? out.slice(0, max) + "…(已截断)" : out}`);
+                let result;
+                if (method === "personal_sign" && typeof dappProviderRequest === "function") {
+                    result = await dappProviderRequest(provider, { method, params }, sysLog);
+                } else {
+                    result = await provider.request({ method, params });
+                    const out =
+                        typeof result === "object" && result !== null
+                            ? JSON.stringify(result, null, 0)
+                            : String(result);
+                    const max = 4000;
+                    sysLog(`成功: ${out.length > max ? out.slice(0, max) + "…(已截断)" : out}`);
+                }
             } catch (err) {
                 sysLog(`RPC 错误: ${err && err.message ? err.message : String(err)}`);
             }

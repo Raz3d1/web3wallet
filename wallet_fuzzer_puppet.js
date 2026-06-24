@@ -318,6 +318,9 @@ class WalletFuzzerPuppet {
       );
 
       this._log("INFO", `Forwarding RPC call to wallet: ${payload.method} (from ${account})`);
+      if (payload.method === "personal_sign" && typeof logPersonalSignRequest === "function") {
+        logPersonalSignRequest(params, (msg) => this._log("INFO", msg));
+      }
 
       // Send the request to the wallet
       const result = await window.ethereum.request({
@@ -325,7 +328,11 @@ class WalletFuzzerPuppet {
         params: params
       });
 
-      this._log("SUCCESS", `Wallet request succeeded. Result: ${JSON.stringify(result)}`);
+      if (payload.method === "personal_sign" && typeof logPersonalSignResult === "function") {
+        logPersonalSignResult(result, (msg) => this._log("SUCCESS", msg));
+      } else {
+        this._log("SUCCESS", `Wallet request succeeded. Result: ${JSON.stringify(result)}`);
+      }
 
       // Send success feedback to the Fuzzer
       this._sendFeedback({

@@ -122,6 +122,26 @@ function sysLog(m) {
     logPanel.innerHTML += `<div>> ${new Date().toLocaleTimeString()}: ${m}</div>`;
     logPanel.scrollTop = logPanel.scrollHeight;
 }
+window.sysLog = sysLog;
+
+async function executeWalletRpc(provider, request, contextLabel) {
+    const method = request.method;
+    const params = request.params;
+    if (typeof dappProviderRequest === "function") {
+        return dappProviderRequest(provider, { method, params }, sysLog);
+    }
+    if (typeof isPersonalSignMethod === "function" && isPersonalSignMethod(method)) {
+        if (typeof logPersonalSignRequest === "function") logPersonalSignRequest(params, sysLog);
+    }
+    const result = await provider.request({ method, params });
+    if (typeof isPersonalSignMethod === "function" && isPersonalSignMethod(method)) {
+        if (typeof logPersonalSignResult === "function") logPersonalSignResult(result, sysLog);
+        else sysLog(`personal_sign 签名结果: ${result}`);
+    } else if (contextLabel) {
+        sysLog(`[${contextLabel}] ${method} 完成`);
+    }
+    return result;
+}
 
 // 检查函数是否加载成功
 const availableTests = [];
@@ -192,10 +212,10 @@ async function init() {
                         for (let i = 0; i < data.requests.length; i++) {
                             const req = data.requests[i];
                             sysLog(`[${group.vId}] 复合请求 ${i + 1}/${data.requests.length}: ${req.method}`);
-                            await provider.request({ method: req.method, params: req.params });
+                            await executeWalletRpc(provider, req, group.vId);
                         }
                     } else {
-                        await provider.request({ method: data.method, params: data.params });
+                        await executeWalletRpc(provider, data, group.vId);
                     }
                 } catch (err) {
                     sysLog(`RPC 错误: ${err.message}`);

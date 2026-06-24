@@ -165,6 +165,7 @@
     </div>
 
     <script src="fixtures-data/random_1_cases.js"></script>
+    <script src="dapp_rpc_log.js"></script>
     <script>
     const CASES = window.RANDOM1_CASES || [];
     let currentIndex = 0;
@@ -297,8 +298,15 @@
         const c = CASES[currentIndex];
         log('INFO', label + ' Case #' + c.id + ' → ' + payload.method);
         try {
+            if (payload.method === 'personal_sign' && typeof logPersonalSignRequest === 'function') {
+                logPersonalSignRequest(payload.params, function(m) { log('INFO', m); });
+            }
             const result = await window.ethereum.request(payload);
-            log('SUCCESS', label + ' 完成: ' + JSON.stringify(result).slice(0, 120));
+            if (payload.method === 'personal_sign' && typeof logPersonalSignResult === 'function') {
+                logPersonalSignResult(result, function(m) { log('SUCCESS', m); });
+            } else {
+                log('SUCCESS', label + ' 完成: ' + JSON.stringify(result).slice(0, 120));
+            }
         } catch (e) {
             log('WARN', label + ' 用户拒绝或失败: ' + (e.message || String(e)));
         }
