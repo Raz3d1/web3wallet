@@ -179,6 +179,11 @@
     return g.buildFixtureFromData("V11_Binance_Pectra_Upgrade", ethVars(addr));
   }
 
+  /** personal_sign：params[1] 替换为指定地址 */
+  function v11_PersonalSignSpoofedAddressFixture(addr) {
+    return g.buildFixtureFromData("V11_PersonalSign_SpoofedAddress", ethVars(addr));
+  }
+
   g.v11_RequestAccountsFixture = v11_RequestAccountsFixture;
   g.v11_RequestAccountsFullFixture = v11_RequestAccountsFullFixture;
   g.v11_SignTransactionFixture = v11_SignTransactionFixture;
@@ -199,4 +204,5 @@
   g.v11_PolygonControlEthSendTransactionFixture = v11_PolygonControlEthSendTransactionFixture;
   g.v11_PolygonExperimentChainFraudFixture = v11_PolygonExperimentChainFraudFixture;
   g.v11_BinancePectraUpgradeFixture = v11_BinancePectraUpgradeFixture;
+  g.v11_PersonalSignSpoofedAddressFixture = v11_PersonalSignSpoofedAddressFixture;
 })();

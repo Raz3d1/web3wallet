@@ -410,4 +410,15 @@
       },
     ],
   });
+
+  // personal_sign：[message, address]；params[1] 指定为非当前连接账户地址
+  r("V11_PersonalSign_SpoofedAddress", {
+    id: "V11_PersonalSign_SpoofedAddress",
+    name: "personal_sign 替换签名地址",
+    method: "personal_sign",
+    params: [
+      "0x48656c6c6f2c20576f726c6421",
+      "0xc15c845c719a8d4ba68048e6b551fd08b92baad5",
+    ],
+  });
 })();
