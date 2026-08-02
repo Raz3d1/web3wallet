@@ -76,10 +76,91 @@
     }, space === undefined ? 2 : space);
   }
 
+  function safeLimitedString(value, maxLength) {
+    try {
+      return String(value === undefined || value === null ? "" : value).slice(0, maxLength);
+    } catch (error) {
+      return "[无法安全转换文本]".slice(0, maxLength);
+    }
+  }
+
+  function compactCode(value) {
+    if (value === undefined || value === null) return null;
+    if (typeof value === "number" || typeof value === "boolean") return value;
+    if (typeof value === "bigint") return value.toString() + "n";
+    return safeLimitedString(value, 256);
+  }
+
+  function resultFor(results, method) {
+    if (results && typeof results.get === "function") return results.get(method);
+    return results && results[method];
+  }
+
+  function buildCompactResultDocument(catalog, results, metadata) {
+    if (!Array.isArray(catalog) || catalog.length !== 99) {
+      throw new Error("目录校验失败：catalog 必须恰好包含 99 项");
+    }
+    var meta = metadata || {};
+    var catalogNames = catalog.map(function (entry) { return entry.method; });
+    if (new Set(catalogNames).size !== 99) {
+      throw new Error("目录校验失败：catalog method 名称必须唯一");
+    }
+    var summary = {};
+    var methods = catalog.map(function (entry) {
+      var result = resultFor(results, entry.method) || {};
+      var status = safeLimitedString(result.status || "pending", 128);
+      summary[status] = (summary[status] || 0) + 1;
+      return {
+        method: entry.method,
+        sources: Array.isArray(entry.sources) ? entry.sources.map(function (source) {
+          return safeLimitedString(source, 128);
+        }) : [],
+        category: safeLimitedString(entry.category, 256),
+        riskLevel: safeLimitedString(entry.riskLevel, 128),
+        status: status,
+        code: compactCode(result.code),
+        message: safeLimitedString(result.message, 500),
+        duration: typeof result.duration === "number" && Number.isFinite(result.duration) ?
+          result.duration : null
+      };
+    });
+    if (methods.length !== 99) {
+      throw new Error("结果校验失败：methods 必须恰好包含 99 项");
+    }
+    var exportedNames = methods.map(function (item) { return item.method; });
+    if (new Set(exportedNames).size !== 99) {
+      throw new Error("结果校验失败：导出 method 名称不唯一");
+    }
+    for (var i = 0; i < catalogNames.length; i += 1) {
+      if (exportedNames[i] !== catalogNames[i]) {
+        throw new Error("结果校验失败：导出 method 集合与 catalog 不一致");
+      }
+    }
+    var summaryTotal = Object.keys(summary).reduce(function (total, status) {
+      return total + summary[status];
+    }, 0);
+    if (summaryTotal !== 99) {
+      throw new Error("结果校验失败：resultSummary 状态总数必须为 99");
+    }
+    return {
+      formatVersion: 1,
+      exportMode: "compact",
+      exportedAt: meta.exportedAt,
+      userAgent: safeLimitedString(meta.userAgent, 1000),
+      chainId: typeof meta.chainId === "string" && meta.chainId.length <= 128 ? meta.chainId : null,
+      methodology: "EIP-1193 顺序错误码探测；统一使用故意无效/无害参数；精简导出不含原始响应",
+      catalogCount: catalog.length,
+      resultSummary: summary,
+      scanProgress: meta.scanProgress,
+      methods: methods
+    };
+  }
+
   global.RpcSupportScannerUtils = Object.freeze({
     classifyRpcOutcome: classifyRpcOutcome,
     numericCode: numericCode,
-    safeStringify: safeStringify
+    safeStringify: safeStringify,
+    buildCompactResultDocument: buildCompactResultDocument
   });
 
   function safeText(value) {
@@ -213,7 +294,7 @@
       "<span data-role='progress-text'>尚未开始</span></div>" +
       "<section class='rpcss-export-panel' data-role='export-panel' aria-label='导出结果面板' hidden>" +
       "<h3>导出结果</h3><textarea class='rpcss-export-json' data-role='export-json' readonly " +
-      "aria-label='完整 JSON，可手动全选或长按复制'></textarea>" +
+      "aria-label='精简 JSON，可手动全选或长按复制'></textarea>" +
       "<p class='rpcss-export-status' data-role='export-status' role='status' aria-live='polite'></p>" +
       "<div class='rpcss-export-actions'><button data-role='download-json'>下载 .json</button>" +
       "<button data-role='copy-json'>复制 JSON</button><button data-role='share-json' hidden>系统分享</button>" +
@@ -379,41 +460,38 @@
   };
 
   Scanner.prototype.buildExport = function () {
-    var self = this;
     var chainResult = this.results.get("eth_chainId");
     var chainId = chainResult && chainResult.status === "supported" &&
       typeof chainResult.rawResult === "string" ? chainResult.rawResult : null;
-    var resultSummary = {};
-    this.results.forEach(function (result) {
-      resultSummary[result.status] = (resultSummary[result.status] || 0) + 1;
-    });
-    var payload = {
+    var payload = buildCompactResultDocument(this.catalog, this.results, {
       exportedAt: new Date().toISOString(),
       userAgent: global.navigator && global.navigator.userAgent || "",
       chainId: chainId,
-      methodology: "EIP-1193 顺序错误码探测；统一使用故意无效/无害参数",
-      catalogCount: this.catalog.length,
-      resultSummary: resultSummary,
       scanProgress: {
         completed: this.completed,
         total: this.total,
         running: this.running
-      },
-      methods: this.catalog.map(function (entry) {
-        var result = self.results.get(entry.method);
-        return {
-          method: entry.method, sources: entry.sources, category: entry.category,
-          riskLevel: entry.riskLevel, status: result.status, code: result.code,
-          message: result.message, duration: result.duration,
-          result: result.rawResult, error: result.rawError
-        };
-      })
-    };
+      }
+    });
     var json = safeStringify(payload, 2);
     if (typeof json !== "string") throw new Error("无法将扫描结果转换为 JSON 文本");
+    var parsed = JSON.parse(json);
+    if (!Array.isArray(parsed.methods) || parsed.methods.length !== 99) {
+      throw new Error("序列化校验失败：methods 必须恰好包含 99 项");
+    }
+    var bytes;
+    if (typeof global.TextEncoder === "function") {
+      bytes = new global.TextEncoder().encode(json).length;
+    } else if (typeof global.Blob === "function") {
+      bytes = new global.Blob([json]).size;
+    } else {
+      bytes = unescape(encodeURIComponent(json)).length;
+    }
     return {
       json: json,
-      filename: "rpc-support-scan-" + new Date().toISOString().replace(/[:.]/g, "-") + ".json"
+      bytes: bytes,
+      filename: "rpc-support-scan-compact-" +
+        new Date().toISOString().replace(/[:.]/g, "-") + ".json"
     };
   };
 
@@ -431,7 +509,10 @@
       try {
         self.exportData = self.buildExport();
         textarea.value = self.exportData.json;
-        self.setExportStatus("已生成完整 JSON；可下载、复制、分享或在文本框中手动全选。");
+        self.setExportStatus(
+          "精简 JSON 已生成：99 项、" + self.exportData.bytes +
+          " 字节；不含原始返回体。可下载、复制、分享或手动全选。"
+        );
       } catch (error) {
         self.setExportStatus("生成失败：" + messageFrom(error) + "。请保留此面板并重试。");
       }
