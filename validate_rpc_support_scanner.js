@@ -48,8 +48,10 @@ const scannerContext = {
 };
 scannerContext.window.window = scannerContext.window;
 scannerContext.window.document = scannerContext.document;
-vm.runInNewContext(fs.readFileSync(path.join(root, "rpc_support_scanner.js"), "utf8"), scannerContext);
+const scannerSource = fs.readFileSync(path.join(root, "rpc_support_scanner.js"), "utf8");
+vm.runInNewContext(scannerSource, scannerContext);
 const classify = scannerContext.window.RpcSupportScannerUtils.classifyRpcOutcome;
+const safeStringify = scannerContext.window.RpcSupportScannerUtils.safeStringify;
 const cases = [
   [{ ok: true }, "supported"],
   [{ ok: false, error: { code: -32602 } }, "recognized_invalid_params"],
@@ -67,6 +69,30 @@ const cases = [
 ];
 cases.forEach(([outcome, expected]) => assert.strictEqual(classify(outcome), expected));
 
+const bigintJson = safeStringify({ count: BigInt("9007199254740993") });
+assert.strictEqual(JSON.parse(bigintJson).count, "9007199254740993n");
+const circular = { label: "root" };
+circular.self = circular;
+const circularJson = safeStringify(circular);
+assert.strictEqual(JSON.parse(circularJson).self, "[Circular]");
+
+[
+  "导出 / 复制 JSON",
+  "data-role='export-panel'",
+  "data-role='export-json'",
+  "data-role='download-json'",
+  "data-role='copy-json'",
+  "data-role='share-json'",
+  "data-role='close-export'",
+  "aria-live='polite'",
+  "下载可能被 WebView 拦截",
+  "长按复制",
+  "navigatorObject.canShare",
+  "catalogCount",
+  "resultSummary",
+  "scanProgress"
+].forEach((marker) => assert(scannerSource.includes(marker), `缺少导出 UI/逻辑标记：${marker}`));
+
 const rootHtml = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const dynamicHtml = fs.readFileSync(path.join(root, "dynamic_rpc", "index.html"), "utf8");
 assert(rootHtml.includes("data-rpc-support-scanner"));
@@ -80,6 +106,8 @@ console.log(JSON.stringify({
   sourceCounts: { ethereum: 78, metamask: 52, intersection: 31, union: 99 },
   catalog: { unique: methods.size, categories: 9, sourcesVerified: true },
   classificationCasesPassed: cases.length,
+  safeStringify: { bigint: true, circular: true },
+  exportUi: true,
   htmlIntegration: true,
   harmlessProbeParams: true
 }, null, 2));

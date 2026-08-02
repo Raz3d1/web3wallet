@@ -47,9 +47,39 @@
     return code === null ? "inconclusive" : "inconclusive";
   }
 
+  function safelyRead(object, key) {
+    try {
+      return object[key];
+    } catch (error) {
+      return "[读取 " + key + " 失败：" + (error && error.message ? error.message : String(error)) + "]";
+    }
+  }
+
+  function safeStringify(value, space) {
+    var seen = [];
+    return JSON.stringify(value, function (key, item) {
+      if (typeof item === "bigint") return item.toString() + "n";
+      if (!item || typeof item !== "object") return item;
+      if (seen.indexOf(item) !== -1) return "[Circular]";
+      seen.push(item);
+      if (Object.prototype.toString.call(item) === "[object Error]" ||
+          (typeof Error !== "undefined" && item instanceof Error)) {
+        return {
+          name: safelyRead(item, "name") || "Error",
+          message: safelyRead(item, "message") || String(item),
+          stack: safelyRead(item, "stack") || null,
+          code: safelyRead(item, "code"),
+          data: safelyRead(item, "data")
+        };
+      }
+      return item;
+    }, space === undefined ? 2 : space);
+  }
+
   global.RpcSupportScannerUtils = Object.freeze({
     classifyRpcOutcome: classifyRpcOutcome,
-    numericCode: numericCode
+    numericCode: numericCode,
+    safeStringify: safeStringify
   });
 
   function safeText(value) {
@@ -134,8 +164,15 @@
       "color:#a33}.rpcss-status-supported,.rpcss-status-recognized_invalid_params,.rpcss-status-supported_user_rejected," +
       ".rpcss-status-supported_unauthorized{color:#137333}.rpcss-status-unsupported{color:#b3261e}" +
       ".rpcss-status-manual_required{color:#b06000}.rpcss-empty{text-align:center;color:var(--rpcss-muted);padding:24px}" +
+      ".rpcss-export-panel{margin:14px 0;padding:12px;border:1px solid var(--rpcss-line);border-radius:8px;" +
+      "background:#f8f9fa}.rpcss-export-panel[hidden]{display:none}.rpcss-export-panel h3{margin:0 0 8px;font-size:16px}" +
+      ".rpcss-export-json{display:block;width:100%;min-height:220px;max-height:55vh;resize:vertical;padding:10px;" +
+      "border:1px solid var(--rpcss-line);border-radius:7px;background:#fff;color:#202124;font:12px/1.45 " +
+      "ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre}.rpcss-export-status{min-height:1.5em;" +
+      "margin:8px 0;color:var(--rpcss-muted)}.rpcss-export-actions{display:flex;gap:8px;flex-wrap:wrap}" +
       "@media(max-width:700px){.rpcss{padding:12px;margin:14px 0}.rpcss-toolbar{grid-template-columns:1fr 1fr}" +
-      ".rpcss-toolbar input{grid-column:1/-1}.rpcss-actions button{flex:1}.rpcss h2{font-size:18px}}";
+      ".rpcss-toolbar input{grid-column:1/-1}.rpcss-actions button{flex:1}.rpcss h2{font-size:18px}" +
+      ".rpcss-export-json{min-height:180px}.rpcss-export-actions button{flex:1 1 42%}}";
     document.head.appendChild(style);
   }
 
@@ -172,8 +209,15 @@
       }).join("") + "</select></div>" +
       "<label class='rpcss-risk'><input data-role='high-risk' type='checkbox'>包含交互/签名/交易方法（仅限隔离测试钱包；开始前会进行一次强确认，钱包自身仍可能逐项弹窗）</label>" +
       "<div class='rpcss-actions'><button class='rpcss-primary' data-role='start'>开始顺序扫描</button>" +
-      "<button data-role='stop' disabled>停止</button><button data-role='export'>导出 JSON</button>" +
+      "<button data-role='stop' disabled>停止</button><button data-role='export'>导出 / 复制 JSON</button>" +
       "<span data-role='progress-text'>尚未开始</span></div>" +
+      "<section class='rpcss-export-panel' data-role='export-panel' aria-label='导出结果面板' hidden>" +
+      "<h3>导出结果</h3><textarea class='rpcss-export-json' data-role='export-json' readonly " +
+      "aria-label='完整 JSON，可手动全选或长按复制'></textarea>" +
+      "<p class='rpcss-export-status' data-role='export-status' role='status' aria-live='polite'></p>" +
+      "<div class='rpcss-export-actions'><button data-role='download-json'>下载 .json</button>" +
+      "<button data-role='copy-json'>复制 JSON</button><button data-role='share-json' hidden>系统分享</button>" +
+      "<button data-role='close-export'>关闭</button></div></section>" +
       "<div class='rpcss-progress' aria-hidden='true'><i data-role='progress-bar'></i></div>" +
       "<div class='rpcss-stats' data-role='stats'></div>" +
       "<div class='rpcss-legend'>图例：成功＝supported；-32602＝已识别/参数无效；4001＝支持/用户拒绝；4100＝支持/未授权；4200 或 -32601＝不支持；4900/4901＝Provider/链不可用；-32000～-32099＝请求已到达实现但失败；超时、无 code 或其他＝结论不确定/无响应。</div>" +
@@ -203,7 +247,21 @@
       self.stopRequested = true;
       self.updateControls();
     });
-    this.container.querySelector("[data-role='export']").addEventListener("click", function () { self.exportJson(); });
+    this.container.querySelector("[data-role='export']").addEventListener("click", function () {
+      self.openExportPanel();
+    });
+    this.container.querySelector("[data-role='download-json']").addEventListener("click", function () {
+      self.downloadJson();
+    });
+    this.container.querySelector("[data-role='copy-json']").addEventListener("click", function () {
+      self.copyJson();
+    });
+    this.container.querySelector("[data-role='share-json']").addEventListener("click", function () {
+      self.shareJson();
+    });
+    this.container.querySelector("[data-role='close-export']").addEventListener("click", function () {
+      self.container.querySelector("[data-role='export-panel']").hidden = true;
+    });
   };
 
   Scanner.prototype.filteredEntries = function () {
@@ -316,16 +374,31 @@
     this.render();
   };
 
-  Scanner.prototype.exportJson = function () {
+  Scanner.prototype.setExportStatus = function (message) {
+    this.container.querySelector("[data-role='export-status']").textContent = message;
+  };
+
+  Scanner.prototype.buildExport = function () {
     var self = this;
     var chainResult = this.results.get("eth_chainId");
     var chainId = chainResult && chainResult.status === "supported" &&
       typeof chainResult.rawResult === "string" ? chainResult.rawResult : null;
+    var resultSummary = {};
+    this.results.forEach(function (result) {
+      resultSummary[result.status] = (resultSummary[result.status] || 0) + 1;
+    });
     var payload = {
       exportedAt: new Date().toISOString(),
       userAgent: global.navigator && global.navigator.userAgent || "",
       chainId: chainId,
       methodology: "EIP-1193 顺序错误码探测；统一使用故意无效/无害参数",
+      catalogCount: this.catalog.length,
+      resultSummary: resultSummary,
+      scanProgress: {
+        completed: this.completed,
+        total: this.total,
+        running: this.running
+      },
       methods: this.catalog.map(function (entry) {
         var result = self.results.get(entry.method);
         return {
@@ -336,15 +409,153 @@
         };
       })
     };
-    var blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-    var url = URL.createObjectURL(blob);
-    var link = document.createElement("a");
-    link.href = url;
-    link.download = "rpc-support-scan-" + new Date().toISOString().replace(/[:.]/g, "-") + ".json";
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    var json = safeStringify(payload, 2);
+    if (typeof json !== "string") throw new Error("无法将扫描结果转换为 JSON 文本");
+    return {
+      json: json,
+      filename: "rpc-support-scan-" + new Date().toISOString().replace(/[:.]/g, "-") + ".json"
+    };
+  };
+
+  Scanner.prototype.openExportPanel = function () {
+    var self = this;
+    var panel = this.container.querySelector("[data-role='export-panel']");
+    var textarea = this.container.querySelector("[data-role='export-json']");
+    var shareButton = this.container.querySelector("[data-role='share-json']");
+    panel.hidden = false;
+    textarea.value = "";
+    this.exportData = null;
+    shareButton.hidden = !(global.navigator && typeof global.navigator.share === "function");
+    this.setExportStatus("正在生成 JSON…");
+    setTimeout(function () {
+      try {
+        self.exportData = self.buildExport();
+        textarea.value = self.exportData.json;
+        self.setExportStatus("已生成完整 JSON；可下载、复制、分享或在文本框中手动全选。");
+      } catch (error) {
+        self.setExportStatus("生成失败：" + messageFrom(error) + "。请保留此面板并重试。");
+      }
+    }, 0);
+  };
+
+  Scanner.prototype.exportJson = function () {
+    this.openExportPanel();
+  };
+
+  Scanner.prototype.copyJson = function () {
+    var self = this;
+    var textarea = this.container.querySelector("[data-role='export-json']");
+    if (!textarea.value) {
+      this.setExportStatus("尚无可复制的 JSON，请等待生成完成。");
+      return;
+    }
+    function fallbackCopy() {
+      try {
+        textarea.focus();
+        textarea.select();
+        if (typeof textarea.setSelectionRange === "function") {
+          textarea.setSelectionRange(0, textarea.value.length);
+        }
+        if (typeof document.execCommand === "function" && document.execCommand("copy")) {
+          self.setExportStatus("复制成功（兼容模式）。");
+          return;
+        }
+      } catch (error) {
+        // 保留文本和选区，供用户手动复制。
+      }
+      self.setExportStatus("自动复制失败；请在文本框中长按复制，或手动全选。");
+    }
+    if (global.navigator && global.navigator.clipboard &&
+        typeof global.navigator.clipboard.writeText === "function") {
+      try {
+        Promise.resolve(global.navigator.clipboard.writeText(textarea.value)).then(function () {
+          self.setExportStatus("复制成功。");
+        }, fallbackCopy);
+      } catch (error) {
+        fallbackCopy();
+      }
+    } else {
+      fallbackCopy();
+    }
+  };
+
+  Scanner.prototype.downloadJson = function () {
+    if (!this.exportData) {
+      this.setExportStatus("尚无可下载的 JSON，请等待生成完成。");
+      return;
+    }
+    if (typeof global.Blob !== "function" || !global.URL ||
+        typeof global.URL.createObjectURL !== "function") {
+      this.setExportStatus("当前 WebView 不支持文件下载；请改用复制 JSON 或系统分享。");
+      return;
+    }
+    var url;
+    var link;
+    try {
+      var blob = new global.Blob([this.exportData.json], { type: "application/json;charset=utf-8" });
+      url = global.URL.createObjectURL(blob);
+      link = document.createElement("a");
+      link.href = url;
+      link.download = this.exportData.filename;
+      document.body.appendChild(link);
+      link.click();
+      if (link.parentNode) link.parentNode.removeChild(link);
+      this.setExportStatus(
+        "下载已触发；下载可能被 WebView 拦截。若未出现文件，请改用复制 JSON 或系统分享。"
+      );
+      setTimeout(function () {
+        try { global.URL.revokeObjectURL(url); } catch (error) { /* 无需影响已触发的下载 */ }
+      }, 3000);
+    } catch (error) {
+      if (link && link.parentNode) link.parentNode.removeChild(link);
+      if (url && global.URL && typeof global.URL.revokeObjectURL === "function") {
+        try { global.URL.revokeObjectURL(url); } catch (revokeError) { /* 忽略清理错误 */ }
+      }
+      this.setExportStatus("下载失败：" + messageFrom(error) + "。请改用复制 JSON 或系统分享。");
+    }
+  };
+
+  Scanner.prototype.shareJson = async function () {
+    if (!this.exportData) {
+      this.setExportStatus("尚无可分享的 JSON，请等待生成完成。");
+      return;
+    }
+    var navigatorObject = global.navigator;
+    if (!navigatorObject || typeof navigatorObject.share !== "function") {
+      this.setExportStatus("当前 WebView 不支持系统分享，请改用复制 JSON。");
+      return;
+    }
+    var shareData = null;
+    try {
+      if (typeof global.File === "function" && typeof navigatorObject.canShare === "function") {
+        try {
+          var file = new global.File(
+            [this.exportData.json],
+            this.exportData.filename,
+            { type: "application/json" }
+          );
+          var fileData = { title: "RPC 支持度扫描结果", files: [file] };
+          if (navigatorObject.canShare(fileData)) shareData = fileData;
+        } catch (fileShareError) {
+          // 文件分享能力报告不可靠时，继续尝试小体积文本分享。
+        }
+      }
+      if (!shareData && this.exportData.json.length <= 100 * 1024) {
+        shareData = { title: "RPC 支持度扫描结果", text: this.exportData.json };
+      }
+      if (!shareData) {
+        this.setExportStatus("JSON 超过 100KB 且当前 WebView 不支持文件分享，请改用复制 JSON。");
+        return;
+      }
+      await navigatorObject.share(shareData);
+      this.setExportStatus("系统分享已完成。");
+    } catch (error) {
+      if (error && error.name === "AbortError") {
+        this.setExportStatus("已取消系统分享；JSON 仍保留在文本框中。");
+      } else {
+        this.setExportStatus("分享失败：" + messageFrom(error) + "。请改用复制 JSON。");
+      }
+    }
   };
 
   function mount() {
