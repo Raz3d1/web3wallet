@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>真实 DApp RPC 捕获器</title>
+  <style>
+    :root { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    body { margin: 0; padding: 18px; background: #f4f7f6; color: #202124; }
+    h1 { margin: 0 0 6px; color: #1a73e8; font-size: 23px; }
+    .subtitle { margin: 0 0 16px; color: #5f6368; font-size: 13px; }
+    .mode-switch { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+    .mode-switch a, button { border: 1px solid #dadce0; border-radius: 8px; background: #fff; color: #202124; padding: 9px 12px; cursor: pointer; text-decoration: none; font-size: 13px; }
+    button.primary { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    button.danger { color: #b3261e; }
+    button:disabled { cursor: not-allowed; opacity: .55; }
+    .grid { display: grid; grid-template-columns: minmax(280px, 380px) 1fr; gap: 14px; align-items: start; }
+    .card { padding: 15px; background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+    .card h2 { margin: 0 0 12px; font-size: 17px; }
+    label { display: block; margin: 10px 0 5px; color: #5f6368; font-size: 12px; }
+    input { box-sizing: border-box; width: 100%; padding: 9px 10px; border: 1px solid #dadce0; border-radius: 7px; font: inherit; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .status { margin-top: 12px; padding: 9px; border-radius: 7px; background: #f1f3f4; font-size: 12px; word-break: break-word; }
+    .status.ok { background: #e6f4ea; color: #137333; }
+    .status.warn { background: #fef7e0; color: #8a5a00; }
+    .method-list { display: grid; grid-template-columns: 1fr; gap: 5px; max-height: 390px; overflow: auto; }
+    .method { display: flex; gap: 8px; align-items: center; padding: 7px 8px; border-radius: 6px; background: #f8f9fa; font: 12px Consolas, monospace; }
+    .method input { width: auto; }
+    .method small { margin-left: auto; color: #b3261e; font-family: inherit; }
+    .notice { margin: 10px 0 0; color: #8a5a00; font-size: 12px; line-height: 1.5; }
+    #log { height: 560px; overflow: auto; padding: 10px; border-radius: 8px; background: #101214; color: #b8f7c1; font: 11px/1.5 Consolas, monospace; white-space: pre-wrap; }
+    @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } #log { height: 360px; } }
+  </style>
+</head>
+<body>
+  <h1>真实 DApp RPC 捕获器</h1>
+  <p class="subtitle">捕获 DApp → 钱包的 EIP-1193 请求，并通过独立 WebSocket 回传到本地 PC。</p>
+  <nav class="mode-switch">
+    <a href="index.html">返回 EVM 测试</a>
+    <a href="dynamic_rpc/index.html">JSON-RPC 调试</a>
+    <a href="fuzz.html">Fuzz 自动模式</a>
+  </nav>
+
+  <main class="grid">
+    <section class="card">
+      <h2>连接与控制</h2>
+      <label for="ws-url">本地 PC WebSocket 地址</label>
+      <input id="ws-url" value="" placeholder="ws://192.168.1.100:8766">
+      <label for="token">接收端 Token（可选）</label>
+      <input id="token" type="password" placeholder="与 --token 参数一致">
+      <div class="actions">
+        <button id="connect-wallet" class="primary">连接钱包</button>
+        <button id="connect-pc">连接本地 PC</button>
+        <button id="download">导出 JSON</button>
+        <button id="clear" class="danger">清空记录</button>
+      </div>
+      <div id="status" class="status">正在等待钱包注入...</div>
+      <p class="notice">页面不会自动执行签名、交易或切链请求。捕获这些 RPC 需要真实 DApp 在本页面中调用钱包；已有 EVM 页面可在地址后加 <code>?rpcCaptureWs=ws://PC地址:8766</code> 后使用。</p>
+
+      <h2 style="margin-top:18px">可观测 RPC</h2>
+      <div id="methods" class="method-list"></div>
+      <div class="actions">
+        <button id="safe-probe">执行安全读取测试</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>实时捕获记录</h2>
+      <div id="log">尚未捕获 RPC。</div>
+    </section>
+  </main>
+  <script src="rpc_capture.js"></script>
+</body>
+</html>
