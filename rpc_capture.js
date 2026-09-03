@@ -89,6 +89,48 @@
     return true;
   }
 
+  function sendRpcResponse(id, result = null, error = null) {
+    if (!socket || socket.readyState !== WebSocket.OPEN) return;
+    socket.send(JSON.stringify({
+      type: "rpc_response",
+      id: id ?? null,
+      result: error ? null : safeClone(result),
+      error: error ? safeClone(error) : null
+    }));
+  }
+
+  async function handleRpcRequest(message) {
+    if (!provider) {
+      sendRpcResponse(message.id, null, {
+        code: -32000,
+        message: "钱包 Provider 尚未就绪"
+      });
+      return;
+    }
+    const method = message.method;
+    if (typeof method !== "string" || !method) {
+      sendRpcResponse(message.id, null, {
+        code: -32600,
+        message: "rpc_request 缺少有效的 method"
+      });
+      return;
+    }
+    try {
+      const result = await provider.request({
+        method,
+        params: message.params ?? []
+      });
+      sendRpcResponse(message.id, result);
+    } catch (error) {
+      sendRpcResponse(message.id, null, {
+        name: error?.name || "Error",
+        code: error?.code ?? -32000,
+        message: error?.message || String(error),
+        data: safeClone(error?.data ?? null)
+      });
+    }
+  }
+
   function addRecord(record) {
     records.push(record);
     window.__RPC_CAPTURE_RECORDS__ = records;
@@ -199,7 +241,18 @@
         writeLog("本地 PC WebSocket 已断开", true);
       };
       socket.onerror = () => writeLog("本地 PC WebSocket 连接错误", true);
-      socket.onmessage = (event) => writeLog(`PC：${event.data}`);
+      socket.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          if (message.type === "rpc_request") {
+            void handleRpcRequest(message);
+          } else {
+            writeLog(`PC：${event.data}`);
+          }
+        } catch (_) {
+          writeLog(`PC：${event.data}`);
+        }
+      };
     } catch (error) {
       setStatus(`WebSocket 地址无效：${error.message}`, "warn");
     }
