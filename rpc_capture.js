@@ -3,38 +3,20 @@
 
   const METHODS = [
     ["eth_requestAccounts", true],
-    ["eth_accounts", false],
-    ["eth_chainId", false],
-    ["eth_blockNumber", false],
-    ["eth_getBalance", false],
-    ["eth_getCode", false],
-    ["eth_getTransactionCount", false],
-    ["eth_getBlockByNumber", false],
-    ["eth_getTransactionByHash", false],
-    ["eth_getTransactionReceipt", false],
-    ["eth_call", false],
-    ["eth_estimateGas", false],
-    ["eth_gasPrice", false],
-    ["net_version", false],
-    ["web3_clientVersion", false],
+    ["wallet_requestPermissions", true],
+    ["personal_sign", true],
+    ["eth_sign", true],
+    ["eth_signTypedData", true],
     ["eth_sendTransaction", true],
     ["eth_signTransaction", true],
-    ["eth_sign", true],
-    ["personal_sign", true],
-    ["eth_signTypedData_v3", true],
-    ["eth_signTypedData_v4", true],
-    ["wallet_switchEthereumChain", true],
     ["wallet_addEthereumChain", true],
+    ["wallet_switchEthereumChain", true],
     ["wallet_watchAsset", true],
-    ["wallet_requestPermissions", true],
     ["wallet_sendCalls", true],
-    ["eth_decrypt", true],
-    ["eth_getEncryptionPublicKey", true]
+    ["wallet_scanQRCode", true],
+    ["eth_getEncryptionPublicKey", true],
+    ["eth_decrypt", true]
   ];
-  const SAFE_PROBES = new Set([
-    "eth_accounts", "eth_chainId", "eth_blockNumber", "eth_gasPrice",
-    "net_version", "web3_clientVersion"
-  ]);
   const STORAGE_KEYS = Object.freeze({
     records: "web3wallet.rpc-capture.records.v2",
     tests: "web3wallet.rpc-capture.tests.v2"
@@ -48,42 +30,55 @@
     skipped: "未发送"
   });
 
-  /*
-   * These are protocol-valid probes. Interactive probes are deliberately
-   * rejected by default in the confirmation text; the wallet still receives
-   * a real request and its complete result/error is captured.
-   */
+  // Each probe uses a protocol-valid payload and remains gated by confirmation.
   const TEST_CASES = Object.freeze([
     { id: "eth_requestAccounts", method: "eth_requestAccounts", label: "连接账户", risk: "interactive", description: "EIP-1193 账户连接请求，可能打开连接授权弹窗。", params: async () => [] },
-    { id: "eth_accounts", method: "eth_accounts", label: "读取已授权账户", risk: "safe", description: "读取当前站点已授权账户，不打开弹窗。", params: async () => [] },
-    { id: "eth_chainId", method: "eth_chainId", label: "读取当前链", risk: "safe", description: "读取当前钱包链 ID。", params: async () => [] },
-    { id: "eth_blockNumber", method: "eth_blockNumber", label: "读取区块高度", risk: "safe", description: "读取当前链最新区块号。", params: async () => [] },
-    { id: "eth_getBalance", method: "eth_getBalance", label: "读取账户余额", risk: "safe", description: "使用当前账户和 latest 标签读取余额。", params: async (ctx) => [[await ctx.account(), "latest"]] },
-    { id: "eth_call", method: "eth_call", label: "只读合约调用", risk: "safe", description: "对当前账户地址发起空 calldata 的 eth_call，不改变链上状态。", params: async (ctx) => [{ to: await ctx.account(), data: "0x" }, "latest"] },
-    { id: "eth_estimateGas", method: "eth_estimateGas", label: "估算交易 Gas", risk: "safe", description: "估算当前账户向自身发送 0 值交易所需的 Gas。", params: async (ctx) => [{ from: await ctx.account(), to: await ctx.account(), value: "0x0" }] },
-    { id: "net_version", method: "net_version", label: "读取网络版本", risk: "safe", description: "读取 JSON-RPC 网络版本字符串。", params: async () => [] },
-    { id: "web3_clientVersion", method: "web3_clientVersion", label: "读取客户端版本", risk: "safe", description: "读取钱包或上游节点的客户端版本。", params: async () => [] },
-    { id: "eth_sendTransaction", method: "eth_sendTransaction", label: "发送零值自转交易", risk: "transaction", description: "合法的 from/to/value 交易对象，会打开签名确认；主网请勿确认。", params: async (ctx) => [{ from: await ctx.account(), to: await ctx.account(), value: "0x0" }] },
+    { id: "wallet_requestPermissions", method: "wallet_requestPermissions", label: "请求账户权限", risk: "interactive", description: "EIP-2255 eth_accounts 权限对象，可能打开权限确认弹窗。", params: async () => [{ eth_accounts: {} }] },
     { id: "personal_sign", method: "personal_sign", label: "Personal Sign", risk: "interactive", description: "EIP-191 合法参数顺序：[messageHex, address]，会打开签名弹窗。", params: async (ctx) => [ctx.messageHex, await ctx.account()] },
     { id: "eth_sign", method: "eth_sign", label: "Eth Sign", risk: "interactive", description: "合法参数顺序：[address, 32-byte data]，会打开签名弹窗。", params: async (ctx) => [await ctx.account(), "0x" + "11".repeat(32)] },
-    { id: "eth_signTypedData_v4", method: "eth_signTypedData_v4", label: "EIP-712 Typed Data v4", risk: "interactive", description: "使用当前 chainId 的 EIP-712 结构，会打开签名弹窗。", params: async (ctx) => {
-      const chainId = await ctx.chainId();
-      const numericChainId = Number.parseInt(String(chainId || "0x1"), 16) || 1;
-      return [await ctx.account(), JSON.stringify({
-        domain: { name: "RPC Capture Probe", version: "1", chainId: numericChainId },
-        primaryType: "Probe",
-        types: {
-          EIP712Domain: [
-            { name: "name", type: "string" },
-            { name: "version", type: "string" },
-            { name: "chainId", type: "uint256" }
-          ],
-          Probe: [{ name: "message", type: "string" }]
-        },
-        message: { message: "RPC capture test message" }
-      })];
+    { id: "eth_signTypedData", method: "eth_signTypedData", label: "Legacy Typed Data", risk: "interactive", description: "MetaMask legacy typed-data 数组格式：[typedData, address]。", params: async (ctx) => [[
+      { type: "string", name: "Message", value: "RPC capture test message" },
+      { type: "uint256", name: "Value", value: "1" }
+    ], await ctx.account()] },
+    { id: "eth_sendTransaction", method: "eth_sendTransaction", label: "发送零值自转交易", risk: "transaction", description: "合法的零值自转交易对象，会打开交易确认；请勿在主网确认。", params: async (ctx) => {
+      const account = await ctx.account();
+      return [{ from: account, to: account, value: "0x0", data: "0x" }];
     } },
-    { id: "wallet_requestPermissions", method: "wallet_requestPermissions", label: "请求账户权限", risk: "interactive", description: "EIP-2255 合法权限对象，可能打开权限确认弹窗。", params: async () => [{ eth_accounts: {} }] }
+    { id: "eth_signTransaction", method: "eth_signTransaction", label: "签署零值自转交易", risk: "transaction", description: "合法交易对象，仅请求签名；部分钱包出于安全策略不支持此方法。", params: async (ctx) => {
+      const account = await ctx.account();
+      return [{ from: account, to: account, value: "0x0", data: "0x" }];
+    } },
+    { id: "wallet_addEthereumChain", method: "wallet_addEthereumChain", label: "添加 Gnosis 网络", risk: "interactive", description: "EIP-3085 Gnosis 主网配置，可能打开添加网络确认。", params: async () => [{
+      chainId: "0x64",
+      chainName: "Gnosis",
+      rpcUrls: ["https://rpc.gnosischain.com"],
+      nativeCurrency: { name: "XDAI", symbol: "XDAI", decimals: 18 },
+      blockExplorerUrls: ["https://gnosisscan.io"]
+    }] },
+    { id: "wallet_switchEthereumChain", method: "wallet_switchEthereumChain", label: "切换至 Gnosis", risk: "interactive", description: "EIP-3326 切换至 chainId 0x64，可能改变钱包当前网络。", params: async () => [{ chainId: "0x64" }] },
+    { id: "wallet_watchAsset", method: "wallet_watchAsset", label: "添加 WXDAI 资产", risk: "interactive", description: "EIP-747 Gnosis WXDAI 合法代币信息，使用命名参数对象。", params: async () => ({
+      type: "ERC20",
+      options: {
+        address: "0xe91D153E0b41518A2Ce8Dd3D7944Fa863463a97d",
+        symbol: "WXDAI",
+        decimals: 18
+      }
+    }) },
+    { id: "wallet_sendCalls", method: "wallet_sendCalls", label: "发送零值调用批次", risk: "transaction", description: "EIP-5792 v2.0.0 单调用批次，使用当前账户与当前链。", params: async (ctx) => {
+      const account = await ctx.account();
+      return [{
+        version: "2.0.0",
+        chainId: await ctx.chainId(),
+        from: account,
+        calls: [{ to: account, value: "0x0", data: "0x" }]
+      }];
+    } },
+    { id: "wallet_scanQRCode", method: "wallet_scanQRCode", label: "扫描 EVM 地址二维码", risk: "interactive", description: "打开二维码扫描器，并用 EVM 地址正则约束返回值。", params: async () => ["^0x[0-9a-fA-F]{40}$"] },
+    { id: "eth_getEncryptionPublicKey", method: "eth_getEncryptionPublicKey", label: "获取加密公钥", risk: "interactive", description: "请求当前账户的 X25519 加密公钥，为下一项合法解密请求生成密文。", params: async (ctx) => [await ctx.account()] },
+    { id: "eth_decrypt", method: "eth_decrypt", label: "解密测试消息", risk: "interactive", description: "使用上一项返回的公钥动态生成 x25519-xsalsa20-poly1305 密文。", params: async (ctx) => {
+      const account = await ctx.account();
+      return [await ctx.encryptedMessage(account), account];
+    } }
   ]);
 
   function getPersistentStore() {
@@ -122,6 +117,10 @@
   let stopTestsRequested = false;
   let activeTestContext = null;
   let testRunId = null;
+  let currentRunArtifacts = {
+    encryptionPublicKey: null,
+    encryptionAccount: null
+  };
 
   const $ = (id) => document.getElementById(id);
   const logEl = $("log");
@@ -191,10 +190,56 @@
     };
   }
 
+  function utf8Bytes(text) {
+    if (typeof TextEncoder !== "undefined") return new TextEncoder().encode(String(text));
+    const encoded = unescape(encodeURIComponent(String(text)));
+    return Uint8Array.from(encoded, (character) => character.charCodeAt(0));
+  }
+
   function hexEncode(text) {
-    return `0x${Array.from(text).map((character) =>
-      character.charCodeAt(0).toString(16).padStart(2, "0")
+    return `0x${Array.from(utf8Bytes(text), (byte) =>
+      byte.toString(16).padStart(2, "0")
     ).join("")}`;
+  }
+
+  function bytesToBase64(bytes) {
+    let binary = "";
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    return btoa(binary);
+  }
+
+  function base64ToBytes(value) {
+    const normalised = String(value || "").trim()
+      .replace(/-/g, "+")
+      .replace(/_/g, "/");
+    const padded = normalised.padEnd(Math.ceil(normalised.length / 4) * 4, "=");
+    const binary = atob(padded);
+    return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  }
+
+  function encryptForPublicKey(publicKey, plaintext) {
+    if (!globalThis.nacl?.box?.keyPair || !globalThis.nacl?.randomBytes) {
+      throw new Error("ENCRYPTION_LIBRARY_UNAVAILABLE");
+    }
+    const recipientPublicKey = base64ToBytes(publicKey);
+    if (recipientPublicKey.length !== globalThis.nacl.box.publicKeyLength) {
+      throw new Error("INVALID_ENCRYPTION_PUBLIC_KEY");
+    }
+    const ephemeralKeyPair = globalThis.nacl.box.keyPair();
+    const nonce = globalThis.nacl.randomBytes(globalThis.nacl.box.nonceLength);
+    const ciphertext = globalThis.nacl.box(
+      utf8Bytes(plaintext),
+      nonce,
+      recipientPublicKey,
+      ephemeralKeyPair.secretKey
+    );
+    const envelope = {
+      version: "x25519-xsalsa20-poly1305",
+      nonce: bytesToBase64(nonce),
+      ephemPublicKey: bytesToBase64(ephemeralKeyPair.publicKey),
+      ciphertext: bytesToBase64(ciphertext)
+    };
+    return hexEncode(JSON.stringify(envelope));
   }
 
   function writeLog(message, isError = false) {
@@ -443,7 +488,39 @@
       return accounts[0];
     };
     const chainId = async () => provider.request({ method: "eth_chainId", params: [] });
-    return { account, chainId, messageHex: hexEncode("RPC capture test message") };
+    const encryptionPublicKey = (currentAccount) => {
+      const normalisedAccount = String(currentAccount || "").toLowerCase();
+      if (
+        typeof currentRunArtifacts.encryptionPublicKey === "string" &&
+        currentRunArtifacts.encryptionAccount === normalisedAccount
+      ) {
+        return currentRunArtifacts.encryptionPublicKey;
+      }
+
+      const stored = latestTestResult("eth_getEncryptionPublicKey");
+      if (
+        stored?.status === "success" &&
+        typeof stored.response === "string" &&
+        String(stored.params?.[0] || "").toLowerCase() === normalisedAccount
+      ) {
+        currentRunArtifacts = {
+          encryptionPublicKey: stored.response,
+          encryptionAccount: normalisedAccount
+        };
+        return stored.response;
+      }
+      throw new Error("ENCRYPTION_PUBLIC_KEY_REQUIRED");
+    };
+    const encryptedMessage = async (currentAccount) => encryptForPublicKey(
+      encryptionPublicKey(currentAccount),
+      "RPC capture decrypt test message"
+    );
+    return {
+      account,
+      chainId,
+      encryptedMessage,
+      messageHex: hexEncode("RPC capture test message")
+    };
   }
 
   function testConfirmationText(test, params) {
@@ -507,15 +584,26 @@
         result.status = "success";
         result.response = safeClone(outcome.result);
         result.message = "wallet 返回成功结果";
+        if (test.method === "eth_getEncryptionPublicKey" && typeof outcome.result === "string") {
+          currentRunArtifacts = {
+            encryptionPublicKey: outcome.result,
+            encryptionAccount: String(params?.[0] || "").toLowerCase()
+          };
+        }
       } else {
         result.status = outcome.timeout ? "error" : "error";
         result.error = safeClone(outcome.error);
         result.message = outcome.timeout ? "wallet 回复超时；请求可能仍在钱包侧处理" : (outcome.error?.message || "wallet 返回错误");
       }
     } catch (error) {
-      result.status = error?.message === "NO_ACCOUNT" ? "skipped" : "error";
+      const skippedMessages = {
+        NO_ACCOUNT: "没有已授权账户，未发送该测试",
+        ENCRYPTION_PUBLIC_KEY_REQUIRED: "缺少当前账户的加密公钥；请先成功运行 eth_getEncryptionPublicKey",
+        ENCRYPTION_LIBRARY_UNAVAILABLE: "加密依赖未加载，无法生成合法 eth_decrypt 密文"
+      };
+      result.status = skippedMessages[error?.message] ? "skipped" : "error";
       result.error = normaliseError(error);
-      result.message = result.status === "skipped" ? "没有已授权账户，未发送该测试" : (error?.message || String(error));
+      result.message = skippedMessages[error?.message] || error?.message || String(error);
     } finally {
       activeTestContext = null;
       result.finished_at = new Date().toISOString();
@@ -541,6 +629,10 @@
     testsRunning = true;
     stopTestsRequested = false;
     testRunId = makeId("run");
+    currentRunArtifacts = {
+      encryptionPublicKey: null,
+      encryptionAccount: null
+    };
     const startedAt = new Date().toISOString();
     setStatus(`RPC 测试运行中：0 / ${selected.length}`, "warn");
     renderTestCases();
@@ -724,31 +816,6 @@
     return new Set([...document.querySelectorAll("[data-method]:checked")].map((el) => el.dataset.method));
   }
 
-  async function safeProbe() {
-    findProvider();
-    if (!provider) {
-      setStatus("未找到钱包 Provider", "warn");
-      return;
-    }
-    const selected = selectedMethods();
-    const probes = [
-      ["eth_accounts", []],
-      ["eth_chainId", []],
-      ["eth_blockNumber", []],
-      ["eth_gasPrice", []],
-      ["net_version", []],
-      ["web3_clientVersion", []]
-    ].filter(([method]) => selected.has(method) && SAFE_PROBES.has(method));
-    for (const [method, params] of probes) {
-      try {
-        await provider.request({ method, params });
-      } catch (error) {
-        writeLog(`${method} 安全读取失败：${error.message || error}`, true);
-      }
-    }
-    writeLog(`安全读取测试完成，共 ${probes.length} 个方法`);
-  }
-
   function applyMethodFilter() {
     selectedMethodSet = $("methods")
       ? selectedMethods()
@@ -780,7 +847,6 @@
       renderTestResults();
       setStatus("已清空本地记录", "ok");
     });
-    $("safe-probe").addEventListener("click", safeProbe);
     $("methods").addEventListener("change", applyMethodFilter);
     $("run-selected-tests").addEventListener("click", runSelectedTests);
     $("select-all-tests").addEventListener("click", () => {

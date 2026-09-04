@@ -80,7 +80,7 @@
         <button id="clear" class="danger">清空记录</button>
       </div>
       <div id="status" class="status">正在等待钱包注入...</div>
-      <p class="notice">14 个测试使用协议合法的参数模板。只读请求自动执行；连接、签名、权限和交易请求会在发送前要求人工确认。交易测试只应在测试网或专用测试钱包中运行，并建议在钱包弹窗中拒绝。wallet 回复会写入浏览器本地存储；若 WebView 禁用存储，请连接本地 PC 或及时导出 JSON。</p>
+      <p class="notice">14 个测试使用协议合法的参数模板，并在发送前逐项要求人工确认。交易测试只应在测试网或专用测试钱包中运行，并建议在钱包弹窗中拒绝。wallet 回复会写入浏览器本地存储；若 WebView 禁用存储，请连接本地 PC 或及时导出 JSON。</p>
 
       <h2 class="subheading">14 个 RPC 合法测试</h2>
       <div class="test-controls">
@@ -92,11 +92,8 @@
       <div id="test-progress" class="test-progress">尚未开始</div>
       <div id="test-cases" class="test-list"></div>
 
-      <h2 class="subheading">捕获过滤器（外部 DApp / 测试请求）</h2>
+      <h2 class="subheading">捕获过滤器（14 个测试请求）</h2>
       <div id="methods" class="method-list"></div>
-      <div class="actions">
-        <button id="safe-probe">执行安全读取测试</button>
-      </div>
     </section>
 
     <section class="card">
@@ -106,6 +103,7 @@
       <div id="log">尚未捕获 RPC。</div>
     </section>
   </main>
+  <script src="rpc_encryption_nacl.js"></script>
   <script src="rpc_capture.js"></script>
 </body>
 </html>
