@@ -23,12 +23,37 @@
     .status { margin-top: 12px; padding: 9px; border-radius: 7px; background: #f1f3f4; font-size: 12px; word-break: break-word; }
     .status.ok { background: #e6f4ea; color: #137333; }
     .status.warn { background: #fef7e0; color: #8a5a00; }
-    .method-list { display: grid; grid-template-columns: 1fr; gap: 5px; max-height: 390px; overflow: auto; }
+    .method-list { display: grid; grid-template-columns: 1fr; gap: 5px; max-height: 260px; overflow: auto; }
     .method { display: flex; gap: 8px; align-items: center; padding: 7px 8px; border-radius: 6px; background: #f8f9fa; font: 12px Consolas, monospace; }
     .method input { width: auto; }
     .method small { margin-left: auto; color: #b3261e; font-family: inherit; }
+    .test-controls { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+    .test-controls button { min-height: 36px; }
+    .test-progress { margin: 8px 0; font-size: 12px; color: #5f6368; }
+    .test-list, .test-results { display: grid; gap: 7px; }
+    .test-row, .test-result { border: 1px solid #e3e6e8; border-radius: 8px; background: #fbfcfc; padding: 9px; }
+    .test-row { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: start; }
+    .test-row input { width: auto; margin-top: 3px; }
+    .test-name { font: 12px Consolas, monospace; color: #202124; word-break: break-word; }
+    .test-description { display: block; margin-top: 3px; color: #5f6368; font: 11px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .test-risk { display: inline-block; margin-left: 5px; padding: 1px 5px; border-radius: 4px; font: 10px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .test-risk.safe { background: #e6f4ea; color: #137333; }
+    .test-risk.interactive, .test-risk.transaction { background: #fef7e0; color: #8a5a00; }
+    .test-row button { padding: 5px 8px; font-size: 11px; }
+    .test-result { font-size: 12px; }
+    .test-result-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .test-result-status { font-weight: 600; }
+    .test-result-status.success { color: #137333; }
+    .test-result-status.error { color: #b3261e; }
+    .test-result-status.running { color: #1a73e8; }
+    .test-result-status.cancelled, .test-result-status.skipped { color: #8a5a00; }
+    .test-result details { margin-top: 6px; }
+    .test-result summary { cursor: pointer; color: #1a73e8; font-size: 11px; }
+    .test-result pre { max-height: 260px; overflow: auto; margin: 6px 0 0; padding: 8px; border-radius: 6px; background: #101214; color: #d7f9dc; font: 11px/1.45 Consolas, monospace; white-space: pre-wrap; word-break: break-word; }
+    .subheading { margin: 18px 0 8px; font-size: 14px; }
     .notice { margin: 10px 0 0; color: #8a5a00; font-size: 12px; line-height: 1.5; }
-    #log { height: 560px; overflow: auto; padding: 10px; border-radius: 8px; background: #101214; color: #b8f7c1; font: 11px/1.5 Consolas, monospace; white-space: pre-wrap; }
+    #test-results { max-height: 370px; overflow: auto; }
+    #log { height: 300px; overflow: auto; padding: 10px; border-radius: 8px; background: #101214; color: #b8f7c1; font: 11px/1.5 Consolas, monospace; white-space: pre-wrap; }
     @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } #log { height: 360px; } }
   </style>
 </head>
@@ -55,9 +80,19 @@
         <button id="clear" class="danger">清空记录</button>
       </div>
       <div id="status" class="status">正在等待钱包注入...</div>
-      <p class="notice">页面不会自动执行签名、交易或切链请求。捕获这些 RPC 需要真实 DApp 在本页面中调用钱包；已有 EVM 页面可在地址后加 <code>?rpcCaptureWs=ws://PC地址:8766</code> 后使用。</p>
+      <p class="notice">14 个测试使用协议合法的参数模板。只读请求自动执行；连接、签名、权限和交易请求会在发送前要求人工确认。交易测试只应在测试网或专用测试钱包中运行，并建议在钱包弹窗中拒绝。wallet 回复会写入浏览器本地存储；若 WebView 禁用存储，请连接本地 PC 或及时导出 JSON。</p>
 
-      <h2 style="margin-top:18px">可观测 RPC</h2>
+      <h2 class="subheading">14 个 RPC 合法测试</h2>
+      <div class="test-controls">
+        <button id="run-selected-tests" class="primary">一键运行选中 RPC</button>
+        <button id="select-all-tests">全选 14 个</button>
+        <button id="select-none-tests">清空选择</button>
+        <button id="stop-tests" class="danger" disabled>停止后续测试</button>
+      </div>
+      <div id="test-progress" class="test-progress">尚未开始</div>
+      <div id="test-cases" class="test-list"></div>
+
+      <h2 class="subheading">捕获过滤器（外部 DApp / 测试请求）</h2>
       <div id="methods" class="method-list"></div>
       <div class="actions">
         <button id="safe-probe">执行安全读取测试</button>
@@ -65,7 +100,9 @@
     </section>
 
     <section class="card">
-      <h2>实时捕获记录</h2>
+      <h2>测试结果与 wallet 回复</h2>
+      <div id="test-results" class="test-results"></div>
+      <h2 class="subheading">实时捕获记录</h2>
       <div id="log">尚未捕获 RPC。</div>
     </section>
   </main>
