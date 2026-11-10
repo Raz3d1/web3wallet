@@ -171,7 +171,7 @@ class WalletFuzzerPuppet {
   /**
    * Handle incoming payload from the Fuzzer.
    */
-  private _handleIncomingPayload(data: string): void {
+  private async _handleIncomingPayload(data: string): Promise<void> {
     try {
       const envelope: Record<string, unknown> = JSON.parse(data);
       this._log("INFO", "Received message from Fuzzer:");
@@ -184,18 +184,27 @@ class WalletFuzzerPuppet {
 
       const raw = (envelope.mutation && typeof envelope.mutation === "object"
         ? envelope.mutation
-        : envelope) as RpcPayload;
+        : envelope) as RpcPayload & {
+        is_sequence?: boolean;
+        sequence?: Array<{ method: string; params: unknown }>;
+        delay_ms?: number;
+      };
+
+      if (raw.is_sequence && Array.isArray(raw.sequence)) {
+        await this._forwardSequence(raw);
+        return;
+      }
 
       if (!raw.method) {
         throw new Error("Payload missing required 'method' field");
       }
 
-      if (!Array.isArray(raw.params)) {
-        throw new Error("Payload 'params' must be an array");
+      if (raw.params === undefined) {
+        throw new Error("Payload missing 'params'");
       }
 
       const payload: RpcPayload = { method: raw.method, params: raw.params };
-      this._forwardToWallet(payload);
+      await this._forwardToWallet(payload);
     } catch (error) {
       const errorMsg = (error as Error).message || "Unknown error";
       this._log("ERROR", `Failed to parse incoming payload: ${errorMsg}`);
@@ -221,34 +230,105 @@ class WalletFuzzerPuppet {
     return accounts[0];
   }
 
+  /** 是否是未替换的地址占位符（如 "{{address}}"）。 */
+  private _isAddressPlaceholder(v: unknown): boolean {
+    return typeof v === "string" && /^\s*\{\{[^}]*\}\}\s*$/.test(v);
+  }
+
+  /**
+   * 把 `from` / 签名账户里的占位符 `{{address}}` 替换成已连接账户，
+   * 否则钱包会因地址无法解析而抛异常（Java exception / 4100），弹不出确认页。
+   */
   private _normalizeParamsForWallet(
     method: string,
     params: unknown[],
     account: string
   ): unknown[] {
-    const normalized = JSON.parse(JSON.stringify(params)) as unknown[];
-    const first = normalized[0];
+    const normalized = JSON.parse(JSON.stringify(params || [])) as unknown[];
 
-    if (first && typeof first === "object" && first !== null && "from" in first) {
-      const tx = first as { from?: string };
-      if (tx.from && tx.from.toLowerCase() !== account.toLowerCase()) {
-        this._log("WARN", `Replacing tx.from ${tx.from} -> ${account}`);
-        tx.from = account;
+    const replaceIfAddress = (obj: any, key: string, label: string): void => {
+      if (!obj || typeof obj !== "object") return;
+      const v = obj[key];
+      if (typeof v !== "string") return;
+      const placeholder = this._isAddressPlaceholder(v);
+      const isAddr = v.startsWith("0x") && v.length === 42;
+      if (!placeholder && !isAddr) return;
+      if (v.toLowerCase() === account.toLowerCase()) return;
+      this._log("WARN", `Replacing ${label} ${v} -> ${account}`);
+      obj[key] = account;
+    };
+
+    const first = normalized[0];
+    if (first && typeof first === "object" && first !== null && !Array.isArray(first)) {
+      replaceIfAddress(first, "from", "tx.from");
+      replaceIfAddress(first, "account", "tx.account");
+      const calls = (first as { calls?: unknown[] }).calls;
+      if (Array.isArray(calls)) {
+        calls.forEach((call) => replaceIfAddress(call, "from", "call.from"));
       }
     }
 
-    if (
-      (method === "personal_sign" || method === "eth_sign") &&
-      normalized.length >= 2 &&
-      typeof normalized[1] === "string" &&
-      (normalized[1] as string).startsWith("0x") &&
-      (normalized[1] as string).toLowerCase() !== account.toLowerCase()
-    ) {
-      this._log("WARN", `Replacing signer ${normalized[1]} -> ${account}`);
-      normalized[1] = account;
+    // 按方法确定地址所在位置，而不是靠「以 0x 开头」猜
+    const ADDRESS_INDEX: Record<string, number> = {
+      personal_sign: 1,
+      eth_sign: 0,
+      eth_signTypedData: 0,
+      eth_signTypedData_v1: 0,
+      eth_signTypedData_v3: 0,
+      eth_signTypedData_v4: 0
+    };
+    const idx = ADDRESS_INDEX[method];
+    if (typeof idx === "number" && normalized.length > idx && account) {
+      const v = normalized[idx];
+      const placeholder = this._isAddressPlaceholder(v);
+      const isAddr = typeof v === "string" && v.startsWith("0x") && (v as string).length === 42;
+      if ((placeholder || isAddr) && String(v).toLowerCase() !== account.toLowerCase()) {
+        this._log("WARN", `Replacing signer ${v} -> ${account}`);
+        normalized[idx] = account;
+      }
     }
 
     return normalized;
+  }
+
+  private async _forwardSequence(payload: {
+    sequence: Array<{ method: string; params: unknown }>;
+    delay_ms?: number;
+  }): Promise<void> {
+    if (!window.ethereum) {
+      this._log("ERROR", "window.ethereum is not available.");
+      this._sendFeedback({ status: "error", message: "No wallet" });
+      return;
+    }
+
+    const delay = payload.delay_ms ?? 50;
+    this._log(
+      "WARN",
+      `执行时序劫持攻击，连续 ${payload.sequence.length} 个请求（间隔 ${delay}ms）`
+    );
+
+    try {
+      const account = await this._getConnectedAccount();
+      for (const req of payload.sequence) {
+        const params = this._normalizeParamsForWallet(
+          req.method,
+          req.params as unknown[],
+          account
+        );
+        window.ethereum!
+          .request({ method: req.method, params })
+          .catch((e: Error) =>
+            this._log("ERROR", `[sequence] ${req.method}: ${e.message}`)
+          );
+        await new Promise((r) => setTimeout(r, delay));
+      }
+      this._sendFeedback({ status: "success", action: "sequence_invoked" });
+    } catch (error) {
+      this._sendFeedback({
+        status: "error",
+        message: (error as Error).message || "Sequence failed"
+      });
+    }
   }
 
   /**

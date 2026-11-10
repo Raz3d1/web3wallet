@@ -7,14 +7,14 @@
  * 
  * Usage:
  *   1. As a script in index.html:
- *      <script src="wallet_fuzzer_puppet.js"></script>
+ *      <script src="dapp_scripts/wallet_fuzzer_puppet.js"></script>
  *      <script>
  *        const puppet = new WalletFuzzerPuppet("wss://your-ngrok-url.ngrok.app");
  *        puppet.start();
  *      </script>
  * 
  *   2. As an ES6 module:
- *      import { WalletFuzzerPuppet } from './wallet_fuzzer_puppet.js';
+ *      import { WalletFuzzerPuppet } from './dapp_scripts/wallet_fuzzer_puppet.js';
  *      const puppet = new WalletFuzzerPuppet("wss://your-ngrok-url.ngrok.app");
  *      puppet.start();
  */
@@ -226,26 +226,67 @@ class WalletFuzzerPuppet {
    * so wallets do not reject with 4100 before showing a popup.
    * @private
    */
-  _normalizeParamsForWallet(method, params, account) {
-    const normalized = JSON.parse(JSON.stringify(params));
-    const first = normalized[0];
+  /**
+   * 是否是未替换的地址占位符（如 "{{address}}"）。
+   * 数据集里的父 seed 用它表示「本机钱包地址」。
+   * @private
+   */
+  _isAddressPlaceholder(v) {
+    return typeof v === "string" && /^\s*\{\{[^}]*\}\}\s*$/.test(v);
+  }
 
-    if (first && typeof first === "object" && first.from) {
-      if (first.from.toLowerCase() !== account.toLowerCase()) {
-        this._log("WARN", `Replacing tx.from ${first.from} -> ${account}`);
-        first.from = account;
+  /**
+   * Replace placeholder `from` / signer addresses with the connected account
+   * so wallets do not reject with 4100 (or throw a Java exception on an
+   * unparseable address) before showing a popup.
+   * @private
+   */
+  _normalizeParamsForWallet(method, params, account) {
+    const normalized = JSON.parse(JSON.stringify(params || []));
+
+    const replaceIfAddress = (obj, key, label) => {
+      if (!obj || typeof obj !== "object") return;
+      const v = obj[key];
+      if (typeof v !== "string") return;
+      const placeholder = this._isAddressPlaceholder(v);
+      const isAddr = v.startsWith("0x") && v.length === 42;
+      if (!placeholder && !isAddr) return;
+      if (v.toLowerCase() === account.toLowerCase()) return;
+      this._log("WARN", `Replacing ${label} ${v} -> ${account}`);
+      obj[key] = account;
+    };
+
+    // 1) 对象型首参数：交易类 from / account / address
+    const first = normalized[0];
+    if (first && typeof first === "object" && !Array.isArray(first)) {
+      replaceIfAddress(first, "from", "tx.from");
+      replaceIfAddress(first, "account", "tx.account");
+      // wallet_sendCalls: calls[].from
+      if (Array.isArray(first.calls)) {
+        first.calls.forEach((call) => replaceIfAddress(call, "from", "call.from"));
       }
     }
 
-    if (
-      (method === "personal_sign" || method === "eth_sign") &&
-      normalized.length >= 2 &&
-      typeof normalized[1] === "string" &&
-      normalized[1].startsWith("0x") &&
-      normalized[1].toLowerCase() !== account.toLowerCase()
-    ) {
-      this._log("WARN", `Replacing signer ${normalized[1]} -> ${account}`);
-      normalized[1] = account;
+    // 2) 地址型参数：按方法确定位置，而不是「以 0x 开头」猜
+    //    personal_sign(message, address) / eth_sign(address, message)
+    //    eth_signTypedData* (address, typedData)
+    const ADDRESS_INDEX = {
+      personal_sign: 1,
+      eth_sign: 0,
+      eth_signTypedData: 0,
+      eth_signTypedData_v1: 0,
+      eth_signTypedData_v3: 0,
+      eth_signTypedData_v4: 0
+    };
+    const idx = ADDRESS_INDEX[method];
+    if (typeof idx === "number" && normalized.length > idx && account) {
+      const v = normalized[idx];
+      const placeholder = this._isAddressPlaceholder(v);
+      const isAddr = typeof v === "string" && v.startsWith("0x") && v.length === 42;
+      if ((placeholder || isAddr) && String(v).toLowerCase() !== account.toLowerCase()) {
+        this._log("WARN", `Replacing signer ${v} -> ${account}`);
+        normalized[idx] = account;
+      }
     }
 
     return normalized;
