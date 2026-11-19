@@ -620,7 +620,11 @@ async function probeChain(){
  *   2. 钱包不认识 → wallet_addEthereumChain(完整网络参数) 再切
  * 比手动在钱包里找网络可靠得多
  * ------------------------------------------------------------- */
-const FORK_CHAIN_HEX = "0x539";   // 1337
+/* chainId 可配置：?chainid=20260119（默认 1337）
+   注意：1337 在很多钱包链库里对应已有链（如 zkTAO），会被钱包自己的节点顶掉，
+   所以实际测试建议用一个冷门值。 */
+const FORK_CHAIN_ID = parseInt(_Q.get("chainid") || "1337", 10);
+const FORK_CHAIN_HEX = "0x" + FORK_CHAIN_ID.toString(16);
 
 function forkChainParams(){
   return [{
@@ -635,7 +639,7 @@ function forkChainParams(){
 async function switchWalletToFork(){
   if (!window.ethereum){ alert("当前环境没有 window.ethereum，请在钱包内置浏览器打开"); return; }
   if (!RPC_URL){ alert("缺少 RPC 地址：地址栏加 ?rpc=https://你的隧道"); return; }
-  log("in", `请求钱包切链 → ${FORK_CHAIN_HEX}（1337）rpc=${RPC_URL}`);
+  log("in", `请求钱包切链 → ${FORK_CHAIN_HEX}（${FORK_CHAIN_ID}）rpc=${RPC_URL}`);
   try {
     await window.ethereum.request({
       method: "wallet_switchEthereumChain",
