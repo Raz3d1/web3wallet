@@ -573,18 +573,27 @@ async function probeChain(){
   const el = document.getElementById("chainTxt");
   const pill = document.getElementById("chainPill");
   if (!el) return;
-  if (!HAS_WALLET){
+  if (!HAS_WALLET && !DIRECT_MODE){
     el.textContent = "无钱包"; if (pill) pill.style.color = "var(--ink-3)";
     return;
   }
   el.textContent = "探测中…";
   try {
-    const cid = await window.ethereum.request({ method: "eth_chainId", params: [] });
+    const cid = await rpcCall("eth_chainId", []);
     let ver = null, bn = null;
-    try { ver = await window.ethereum.request({ method: "web3_clientVersion", params: [] }); } catch (e) {}
-    try { bn = await window.ethereum.request({ method: "eth_blockNumber", params: [] }); } catch (e) {}
+    try { ver = await rpcCall("web3_clientVersion", []); } catch (e) {}
+    try { bn = await rpcCall("eth_blockNumber", []); } catch (e) {}
     const id = parseInt(cid, 16);
     const isFork = !!ver && /anvil|hardhat|ganache|reth-dev/i.test(String(ver));
+    // 识别钱包身份（各家会挂 isXxx 标志）
+    const FLAGS = ["isTrust","isTrustWallet","isMetaMask","isBinance","isBitKeep","isBitget",
+                   "isCoinbaseWallet","isTokenPocket","isImToken","isOKExWallet","isMathWallet",
+                   "isRabby","isZerion","isFrame","isBraveWallet"];
+    const who = [];
+    for (const k of FLAGS){ try { if (window.ethereum && window.ethereum[k]) who.push(k); } catch (e) {} }
+    let netv = null;
+    try { netv = await rpcCall("net_version", []); } catch (e) {}
+    log("in", `钱包标志: ${who.length ? who.join(",") : "(无)"}   net_version=${netv || "?"}`);
     const block = bn ? parseInt(bn, 16) : null;
     el.textContent = `${id}${isFork ? " · FORK" : " · 非fork"}${block ? " · #" + block : ""}`;
     if (pill) pill.style.color = isFork ? "var(--ok)" : "var(--warn)";
@@ -643,7 +652,9 @@ function renderMode(){
     mp.className = "pill" + (SEND_MODE === "live" ? " mode-live" : "");
   }
   const wt = document.getElementById("walletTxt");
-  if (wt) wt.textContent = HAS_WALLET ? "已注入" : "无（预览）";
+  if (wt) wt.textContent = DIRECT_MODE ? "直连 RPC" : (HAS_WALLET ? "已注入" : "无（预览）");
+  const dt = document.getElementById("modeTxt");
+  if (dt) dt.textContent = DIRECT_MODE ? "direct" : SEND_MODE;
 }
 
 /* =====================================================================
@@ -951,7 +962,87 @@ function bindReqButtons(c, r){
 const TX_METHODS = ["eth_sendTransaction", "eth_signTransaction"];
 /* ?alignchain=1：把请求里的 chainId 强制对齐到钱包当前链
    （用 chainId≠1 的 fork 链时必须开，否则钱包会拒绝"chainId 不匹配"） */
-const ALIGN_CHAIN = new URLSearchParams(location.search).get("alignchain") === "1";
+
+/* ---------------------------------------------------------------
+ * 直连模式：页面不经钱包，直接 fetch 打 RPC
+ *   ?direct=1&rpc=https://xxx.trycloudflare.com[&from=0x...]
+ *   适用：钱包的 dApp 浏览器不跟随自定义网络时
+ *   原理：anvil 默认账户是解锁的，可以直接 eth_sendTransaction（服务端签名）
+ * ------------------------------------------------------------- */
+const _Q = new URLSearchParams(location.search);
+const DIRECT_MODE = _Q.get("direct") === "1";
+/* 直连模式下必须对齐 chainId：anvil 会拒绝 signer chain 不一致的交易 */
+const ALIGN_CHAIN = _Q.get("alignchain") === "1" || DIRECT_MODE;
+let RPC_URL = _Q.get("rpc") || "";
+if (!RPC_URL) { try { RPC_URL = localStorage.getItem("onchain_rpc_url") || ""; } catch (e) {} }
+let DIRECT_FROM = _Q.get("from") || "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
+if (DIRECT_MODE && RPC_URL) {
+  try { localStorage.setItem("onchain_rpc_url", RPC_URL); } catch (e) {}
+}
+
+const TOPIC_APPROVAL = "0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925";
+const TOPIC_TRANSFER = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+
+/* 统一 RPC 调用：直连走 fetch，否则走钱包 provider */
+async function rpcCall(method, params){
+  if (!DIRECT_MODE) return window.ethereum.request({method, params});
+  if (!RPC_URL) throw new Error("直连模式缺少 ?rpc= 地址");
+  const r = await fetch(RPC_URL, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({jsonrpc: "2.0", id: Date.now() % 100000, method, params}),
+  });
+  const j = await r.json();
+  if (j.error) {
+    const e = new Error(j.error.message || "rpc error");
+    e.code = j.error.code;
+    e.data = j.error.data;
+    throw e;
+  }
+  return j.result;
+}
+
+/* 轮询 receipt（直连模式） */
+async function waitReceipt(txHash, timeoutMs = 60000){
+  const t0 = Date.now();
+  while (Date.now() - t0 < timeoutMs){
+    const rc = await rpcCall("eth_getTransactionReceipt", [txHash]);
+    if (rc) return rc;
+    await new Promise(r => setTimeout(r, 800));
+  }
+  throw new Error("receipt 超时");
+}
+
+/* 从 receipt 解析链上效果 */
+function decodeEffect(receipt){
+  if (!receipt) return {kind: "pending"};
+  if (receipt.status === "0x0" || receipt.status === 0) return {kind: "reverted"};
+  for (const lg of (receipt.logs || [])){
+    const t = (lg.topics || []).map(x => String(x).toLowerCase());
+    const addr = String(lg.address || "").toLowerCase();
+    if (t.length >= 3 && t[0] === TOPIC_APPROVAL){
+      return {kind: "erc20_approval", token: addr,
+              owner: "0x" + t[1].slice(-40), spender: "0x" + t[2].slice(-40),
+              amount: parseInt(lg.data || "0x0", 16)};
+    }
+    if (t.length >= 3 && t[0] === TOPIC_TRANSFER){
+      return {kind: "erc20_transfer", token: addr,
+              to: "0x" + t[2].slice(-40), amount: parseInt(lg.data || "0x0", 16)};
+    }
+  }
+  return {kind: "no_event"};
+}
+
+function describeEffect(e){
+  if (!e) return "—";
+  if (e.kind === "reverted") return "交易回滚（status=0）";
+  if (e.kind === "no_event") return "执行成功但无事件（打给了非合约地址）";
+  if (e.kind === "erc20_approval")
+    return `Approval(${e.token.slice(0,10)}… → spender ${e.spender.slice(0,8)}…, ${e.amount})`;
+  if (e.kind === "erc20_transfer")
+    return `Transfer(→ ${e.to.slice(0,8)}…, ${e.amount})`;
+  return e.kind;
+}
 const GAS_FIELDS = ["gas", "gasPrice", "maxFeePerGas", "maxPriorityFeePerGas"];
 
 function hasPlaceholder(req){
@@ -960,6 +1051,7 @@ function hasPlaceholder(req){
 
 async function prepareParams(req){
   const notes = [];
+  const FROM_ADDR = DIRECT_MODE ? DIRECT_FROM : ACCOUNT;
   let params;
   try {
     params = JSON.parse(JSON.stringify(req.params || []));
@@ -968,8 +1060,8 @@ async function prepareParams(req){
   // 1) {{address}} 替换
   let s = JSON.stringify(params);
   const before = s;
-  s = s.replace(/\{\{\s*address\s*\}\}/gi, ACCOUNT);
-  if (s !== before) notes.push(`{{address}} → ${ACCOUNT}`);
+  s = s.replace(/\{\{\s*address\s*\}\}/gi, FROM_ADDR);
+  if (s !== before) notes.push(`{{address}} → ${FROM_ADDR}`);
   // 其他未知占位符
   const left = s.match(/\{\{[^}]+\}\}/g);
   if (left) notes.push(`⚠ 仍有未替换占位符：${[...new Set(left)].join(", ")}`);
@@ -980,14 +1072,12 @@ async function prepareParams(req){
     const tx = params[0];
     // 2) 刷新 nonce
     try {
-      const n = await window.ethereum.request({
-        method: "eth_getTransactionCount", params: [tx.from, "pending"],
-      });
+      const n = await rpcCall("eth_getTransactionCount", [tx.from, "pending"]);
       if (n) { notes.push(`nonce ${tx.nonce} → ${n}`); tx.nonce = n; }
     } catch (e) { notes.push(`nonce 刷新失败（保留 ${tx.nonce}）`); }
     // 3) chainId 校验
     try {
-      const cid = await window.ethereum.request({ method: "eth_chainId", params: [] });
+      const cid = await rpcCall("eth_chainId", []);
       if (tx.chainId && String(tx.chainId).toLowerCase() !== String(cid).toLowerCase()){
         if (ALIGN_CHAIN){
           notes.push(`chainId ${tx.chainId} → ${cid}（alignchain 已对齐）`);
@@ -1024,8 +1114,8 @@ async function sendStep(c, step){
   const req = c[step];
   const isSignOnly = !TX_METHODS.includes(req.method);
 
-  if (!HAS_WALLET){
-    // 浏览器预览（没有钱包）→ 演示数据，明确标记 MOCK
+  if (!HAS_WALLET && !DIRECT_MODE){
+    // 浏览器预览（没有钱包、也不是直连）→ 演示数据，明确标记 MOCK
     setTimeout(() => {
       r[step] = { state: "ok", kind: "mock",
                   tx: "MOCK-0x" + Math.random().toString(16).slice(2, 10),
@@ -1043,6 +1133,45 @@ async function sendStep(c, step){
     window.__lastPrepared = prepared;   // 供结果区展示
   } catch (e) {
     prepared = { params: req.params, notes: ["参数预处理失败"] };
+  }
+
+  // ============ 直连模式：不经过钱包，直接打 RPC ============
+  if (DIRECT_MODE){
+    if (isSignOnly){
+      r[step] = { state: "ok", kind: "skip", tx: "（直连模式不签名）",
+                  effect: "签名类方法需要私钥，直连模式跳过" };
+      log("warn", "签名类方法在直连模式下跳过（无账户私钥）");
+      afterSend(c, step, r, btn);
+      return;
+    }
+    try {
+      const hash = await rpcCall("eth_sendTransaction", prepared.params);
+      r[step] = { state: "ok", kind: "tx", tx: hash, effect: "已广播，等待 receipt" };
+      log("ok", `← 直连发送成功 tx=${hash}`);
+      afterSend(c, step, r, btn);
+      WS.send({type: "onchain_result", case_id: c.case_id, step,
+               status: "success", kind: "tx", tx_hash: hash, error: null});
+
+      log("in", "   等待 receipt…");
+      const receipt = await waitReceipt(hash);
+      const eff = decodeEffect(receipt);
+      r[step] = { state: "ok", kind: "tx", tx: hash,
+                  effect: describeEffect(eff), receipt, chainEffect: eff };
+      log(eff.kind === "reverted" ? "er" : "ok",
+          `← receipt ${eff.kind}: ${describeEffect(eff)}`);
+      WS.send({type: "onchain_result", case_id: c.case_id, step,
+               status: "success", kind: "tx", tx_hash: hash,
+               receipt, chain_effect: eff, error: null});
+    } catch (e) {
+      const msg = (e && (e.message || e.code)) || String(e);
+      r[step] = { state: "error", code: e && e.code, msg };
+      log("er", "直连发送失败: " + msg);
+      WS.send({type: "onchain_result", case_id: c.case_id, step,
+               status: "error", kind: "tx", tx_hash: null,
+               error: {code: e && e.code, message: msg}});
+    }
+    afterSend(c, step, r, btn);
+    return;
   }
 
   try {
