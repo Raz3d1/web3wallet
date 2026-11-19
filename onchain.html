@@ -237,6 +237,7 @@
     <span class="pill" id="chainPill" title="点这里重新探测钱包所在链">链 <b id="chainTxt">探测中</b></span>
     <span class="pill" id="walletPill">钱包 <b id="walletTxt">检测中</b></span>
     <span class="pill" id="modePill">模式 <b id="modeTxt">dry_run</b></span>
+    <button class="btn" id="btnFund" title="给钱包账户在 fork 上打钱（测试用）">充值</button>
     <button class="btn" id="btnSwitchChain" title="请求钱包切换到 fork 网络">切到 Fork</button>
     <button class="btn" id="btnSelfTest" title="直连 RPC 自检（绕过钱包）">自检 RPC</button>
     <button class="btn" id="btnReconnect">重连</button>
@@ -585,7 +586,26 @@ async function probeChain(){
     try { ver = await rpcCall("web3_clientVersion", []); } catch (e) {}
     try { bn = await rpcCall("eth_blockNumber", []); } catch (e) {}
     const id = parseInt(cid, 16);
-    const isFork = !!ver && /anvil|hardhat|ganache|reth-dev/i.test(String(ver));
+    // 判 fork：clientVersion 报 anvil/hardhat，或钱包 chainId 与页面配置的 RPC chainId 一致
+    let isFork = !!ver && /anvil|hardhat|ganache|reth-dev/i.test(String(ver));
+    let rpcCid = null;
+    if (!isFork && RPC_URL){
+      try { rpcCid = parseInt(await rpcFetch("eth_chainId", []), 16); } catch (e) {}
+      if (rpcCid !== null && rpcCid === id) isFork = true;
+    }
+    // 钱包当前账户 + 余额（发交易前要确认有钱）
+    try {
+      const accts = await window.ethereum.request({ method: "eth_accounts", params: [] });
+      if (accts && accts.length){
+        window.__WALLET_ADDR = accts[0];
+        const bal = await rpcCall("eth_getBalance", [accts[0], "latest"]);
+        const eth = (parseInt(bal, 16) / 1e18).toFixed(4);
+        log("in", `钱包账户 ${accts[0]}  余额 ${eth} ETH`);
+        window.__WALLET_BAL = eth;
+      } else {
+        log("warn", "钱包未授权账户（点击页面会让钱包弹授权）");
+      }
+    } catch (e) { log("warn", "取账户失败: " + ((e && e.message) || e)); }
     // 识别钱包身份（各家会挂 isXxx 标志）
     const FLAGS = ["isTrust","isTrustWallet","isMetaMask","isBinance","isBitKeep","isBitget",
                    "isCoinbaseWallet","isTokenPocket","isImToken","isOKExWallet","isMathWallet",
@@ -653,6 +673,27 @@ function forkChainParams(cid, hex){
     rpcUrls: [RPC_URL],
     blockExplorerUrls: [],
   }];
+}
+
+/* 给钱包当前账户在 fork 上打钱：anvil_setBalance（开发者作弊码，仅本地链有效） */
+async function fundSelf(){
+  if (!RPC_URL){ alert("缺少 RPC 地址：地址栏加 ?rpc=https://你的隧道"); return; }
+  if (!window.ethereum){ alert("请在钱包内置浏览器打开"); return; }
+  let addr = window.__WALLET_ADDR;
+  try {
+    const accts = await window.ethereum.request({ method: "eth_accounts", params: [] });
+    if (accts && accts.length) addr = accts[0];
+  } catch (e) {}
+  if (!addr){ alert("拿不到钱包地址，请先在页面上点一下让它授权"); return; }
+  const before = await rpcFetch("eth_getBalance", [addr, "latest"]);
+  log("in", `充值前 ${addr} 余额 ${(parseInt(before,16)/1e18).toFixed(4)} ETH`);
+  // 1000 ETH
+  const hex = "0x" + (1000n * 10n ** 18n).toString(16);
+  await rpcFetch("anvil_setBalance", [addr, hex]);
+  const after = await rpcFetch("eth_getBalance", [addr, "latest"]);
+  const eth = (parseInt(after,16)/1e18).toFixed(4);
+  log("ok", `✅ 充值完成 ${addr} 余额 ${eth} ETH`);
+  alert(`✅ 已给测试账户充值\n\n${addr}\n${eth} ETH`);
 }
 
 async function switchWalletToFork(){
@@ -1335,6 +1376,7 @@ function doVerify(c){
 document.getElementById("chainPill").onclick = () => probeChain();
 document.getElementById("btnSelfTest").onclick = () => selfTestRpc();
 document.getElementById("btnSwitchChain").onclick = () => switchWalletToFork();
+document.getElementById("btnFund").onclick = () => fundSelf();
 
 document.getElementById("btnReconnect").onclick = () => {
   const q = new URLSearchParams(location.search);
