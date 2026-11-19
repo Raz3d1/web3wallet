@@ -16,7 +16,6 @@
     <script src="fixtures-data/V9.js"></script>
     <script src="fixtures-data/V10.js"></script>
     <script src="fixtures-data/V11.js"></script>
-    <script src="fixtures-data/V14.js"></script>
     <script src="fixtures/V3/EthSign.js"></script>
     <script src="fixtures/V3/HexEncodedHash.js"></script>
     <script src="fixtures/V4/Non-rigorousInputdata.js"></script>
@@ -120,11 +119,26 @@
     <div class="mode-switch">
         <button class="active" onclick="location.href='index.html'">EVM 版本</button>
         <button onclick="location.href='solana.html'">Solana 版本</button>
-        <button type="button" onclick="location.href='dynamic_rpc/index.html'">JSON-RPC 调试</button>
+        <button type="button" onclick="location.href='../dynamic_rpc/index.html'">JSON-RPC 调试</button>
         <button type="button" onclick="location.href='fuzz.html'">Fuzz 自动模式</button>
         <button type="button" onclick="location.href='random1_validate.html'">random_1 验证</button>
         <button type="button" onclick="location.href='rpc_capture.html'">真实 RPC 捕获</button>
+        <button type="button" onclick="openOnchain()">上链测试</button>
     </div>
+
+    <script>
+    /* 上链测试入口：如果本页带 ?ws=，透传给 onchain.html */
+    function openOnchain(){
+        var q = new URLSearchParams(location.search);
+        var ws = q.get('ws');
+        var saved = null;
+        try { saved = localStorage.getItem('onchain_ws_url'); } catch(e) {}
+        var target = 'onchain.html';
+        var url = ws || saved;
+        if (url) target += '?ws=' + encodeURIComponent(url);
+        location.href = target;
+    }
+    </script>
 
     <div id="test-container" class="btn-list"></div>
     
@@ -147,3 +161,4 @@
     <script src="rpc_support_scanner.js"></script>
 </body>
 </html>
+
