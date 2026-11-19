@@ -237,6 +237,7 @@
     <span class="pill" id="chainPill" title="点这里重新探测钱包所在链">链 <b id="chainTxt">探测中</b></span>
     <span class="pill" id="walletPill">钱包 <b id="walletTxt">检测中</b></span>
     <span class="pill" id="modePill">模式 <b id="modeTxt">dry_run</b></span>
+    <button class="btn" id="btnAddChain" title="把 fork 网络添加到钱包（wallet_addEthereumChain）">添加网络</button>
     <button class="btn" id="btnFund" title="给钱包账户在 fork 上打钱（测试用）">充值</button>
     <button class="btn" id="btnSwitchChain" title="请求钱包切换到 fork 网络">切到 Fork</button>
     <button class="btn" id="btnSelfTest" title="直连 RPC 自检（绕过钱包）">自检 RPC</button>
@@ -673,6 +674,48 @@ function forkChainParams(cid, hex){
     rpcUrls: [RPC_URL],
     blockExplorerUrls: [],
   }];
+}
+
+/* 直接把 fork 网络加到钱包里（wallet_addEthereumChain）
+   适用：钱包 UI 里找不到「添加自定义网络」入口时，由 dApp 发起 */
+async function addForkChain(){
+  if (!window.ethereum){ alert("当前环境没有 window.ethereum，请在钱包内置浏览器打开"); return; }
+  if (!RPC_URL){ alert("缺少 RPC 地址：地址栏加 ?rpc=https://你的隧道"); return; }
+  // 识别钱包
+  const FLAGS = ["isTrust","isTrustWallet","isMetaMask","isBinance","isBitKeep","isBitget",
+                 "isCoinbaseWallet","isTokenPocket","isImToken","isOKExWallet","isMathWallet"];
+  const who = [];
+  for (const k of FLAGS){ try { if (window.ethereum[k]) who.push(k); } catch (e) {} }
+  log("in", "当前钱包标志: " + (who.length ? who.join(",") : "(无)"));
+
+  let cid;
+  try { cid = await resolveForkChainId(); }
+  catch (e) { alert("连不上 RPC，先点「自检 RPC」：\n" + ((e && e.message) || e)); return; }
+  const hex = "0x" + cid.toString(16);
+  log("in", `请求添加网络 chainId=${cid}（${hex}）rpc=${RPC_URL}`);
+  try {
+    await window.ethereum.request({
+      method: "wallet_addEthereumChain",
+      params: forkChainParams(cid, hex),
+    });
+    log("ok", "✅ 钱包已添加该网络（若有弹窗请在钱包里点确认）");
+  } catch (e) {
+    const code = e && (e.code || (e.data && e.data.originalError && e.data.originalError.code));
+    log("er", `添加网络失败 code=${code}: ${(e && e.message) || e}`);
+    alert("添加网络失败\n\ncode=" + code + "\n" + ((e && e.message) || e));
+    return;
+  }
+  // 顺手切过去
+  try {
+    await window.ethereum.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: hex }],
+    });
+    log("ok", "✅ 已切到该网络");
+  } catch (e) {
+    log("warn", "添加成功但自动切换失败，请在钱包里手动选该网络");
+  }
+  setTimeout(() => probeChain(), 800);
 }
 
 /* 给钱包当前账户在 fork 上打钱：anvil_setBalance（开发者作弊码，仅本地链有效） */
@@ -1377,6 +1420,7 @@ document.getElementById("chainPill").onclick = () => probeChain();
 document.getElementById("btnSelfTest").onclick = () => selfTestRpc();
 document.getElementById("btnSwitchChain").onclick = () => switchWalletToFork();
 document.getElementById("btnFund").onclick = () => fundSelf();
+document.getElementById("btnAddChain").onclick = () => addForkChain();
 
 document.getElementById("btnReconnect").onclick = () => {
   const q = new URLSearchParams(location.search);
