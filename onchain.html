@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>上链测试 · On-chain Verification</title>
+<style>
+  :root{
+    --bg:#f4f6f9; --card:#fff; --line:#e3e8ef; --ink:#1b2430; --sub:#6b7684;
+    --blue:#1a73e8; --green:#16a34a; --orange:#ea8600; --red:#d93025; --purple:#7c3aed;
+    --mono:ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Microsoft YaHei",sans-serif;
+       font-size:14px;line-height:1.5}
+  /* ---------- 顶栏 ---------- */
+  header{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid var(--line);
+         padding:12px 18px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+         box-shadow:0 1px 4px rgba(16,24,40,.04)}
+  header h1{margin:0;font-size:17px;font-weight:700;letter-spacing:.3px}
+  header .env{font-size:12px;color:var(--sub)}
+  .statusbar{display:flex;gap:10px;flex-wrap:wrap;margin-left:auto;align-items:center}
+  .pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);
+        border-radius:999px;padding:4px 11px;font-size:12px;background:#fbfcfe;color:var(--sub)}
+  .pill b{color:var(--ink);font-weight:600}
+  .dot{width:8px;height:8px;border-radius:50%;background:#c4cbd4;display:inline-block}
+  .dot.on{background:var(--green);box-shadow:0 0 0 3px rgba(22,163,74,.15)}
+  .dot.warn{background:var(--orange)}
+  .mode-live{border-color:#f3c1bd;background:#fff5f4;color:var(--red)}
+  /* ---------- 布局 ---------- */
+  .layout{display:grid;grid-template-columns:288px 1fr;height:calc(100vh - 62px)}
+  @media(max-width:960px){.layout{grid-template-columns:1fr;height:auto}}
+  /* 左侧 */
+  aside{background:#fff;border-right:1px solid var(--line);overflow:auto;padding:12px}
+  .side-h{font-size:11.5px;font-weight:700;color:var(--sub);letter-spacing:.6px;
+          text-transform:uppercase;margin:6px 4px 8px}
+  .wallet{border:1px solid var(--line);border-radius:10px;margin-bottom:8px;overflow:hidden}
+  .wallet-h{display:flex;align-items:center;gap:8px;padding:9px 11px;cursor:pointer;
+            background:#fbfcfe}
+  .wallet-h:hover{background:#f1f5fb}
+  .wallet-h.active{background:#e8f0fe}
+  .wallet-h .nm{font-weight:600;font-size:13.5px}
+  .wallet-h .cnt{margin-left:auto;font-size:11.5px;color:var(--sub)}
+  .wallet-body{display:none;padding:8px}
+  .wallet-body.open{display:block}
+  .chipbar{display:flex;gap:6px;margin:2px 0 8px}
+  .chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:3px 10px;
+        font-size:11.5px;cursor:pointer;color:var(--sub)}
+  .chip.on{background:var(--blue);border-color:var(--blue);color:#fff}
+  .case{display:flex;gap:8px;align-items:flex-start;padding:7px 8px;border-radius:8px;
+        cursor:pointer;border:1px solid transparent}
+  .case:hover{background:#f5f8fd}
+  .case.active{background:#e8f0fe;border-color:#c6dafc}
+  .case .cid{font-family:var(--mono);font-size:12px;font-weight:600}
+  .case .meta{font-size:11px;color:var(--sub);margin-top:1px}
+  .case .right{margin-left:auto;text-align:right}
+  .badge{display:inline-block;font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:999px;
+         color:#fff}
+  .b-mi{background:var(--red)} .b-bd{background:var(--purple)} .b-x{background:var(--red)}
+  .b-w1{background:var(--orange)} .b-ok{background:var(--green)} .b-gray{background:#94a3b8}
+  .b-blue{background:var(--blue)}
+  /* 右侧 */
+  main{overflow:auto;padding:16px 18px 40px}
+  .empty{color:var(--sub);text-align:center;padding:80px 0;font-size:13.5px}
+  .detail-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+  .detail-h .cid{font-family:var(--mono);font-size:20px;font-weight:700}
+  .reason{background:#fff7f6;border-left:3px solid var(--red);border-radius:6px;
+          padding:9px 12px;font-size:13px;margin:10px 0 14px;color:#5c2b28}
+  .prejudge{background:#f6f4ff;border-left:3px solid var(--purple);border-radius:6px;
+            padding:9px 12px;font-size:12.5px;margin:0 0 12px;color:#3b2f63}
+  .prejudge code{background:#e9e4ff;border-radius:4px;padding:1px 6px;font-size:12px}
+  .sec-title{font-size:12px;font-weight:700;color:var(--sub);letter-spacing:.5px;
+             text-transform:uppercase;margin:16px 0 8px}
+  /* 双请求面板 */
+  .pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:1180px){.pair{grid-template-columns:1fr}}
+  .req{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;
+       display:flex;flex-direction:column}
+  .req-h{display:flex;align-items:center;gap:8px;padding:10px 13px;border-bottom:1px solid var(--line);
+         background:#fbfcfe}
+  .req-h .t{font-weight:700;font-size:13.5px}
+  .req-h .sub{font-size:11.5px;color:var(--sub)}
+  .req-b{padding:12px 13px;display:flex;flex-direction:column;gap:10px}
+  .json{background:#0f172a;color:#cbd5e1;border-radius:9px;padding:11px 12px;margin:0;
+        font-family:var(--mono);font-size:11.5px;line-height:1.55;max-height:230px;
+        overflow:auto;white-space:pre}
+  .json .k{color:#7dd3fc} .json .s{color:#86efac} .json .n{color:#fca5a5}
+  .shots{display:flex;gap:7px;overflow-x:auto;padding-bottom:2px}
+  .shots a{position:relative;flex:0 0 auto}
+  .shots img{width:78px;height:auto;border:1px solid var(--line);border-radius:7px;display:block}
+  .shots a:hover img{border-color:var(--blue)}
+  .shots span{position:absolute;left:3px;bottom:3px;background:rgba(15,23,42,.72);color:#fff;
+              font-size:9.5px;padding:0 4px;border-radius:4px}
+  .decl{background:#f2f7ff;border-left:3px solid var(--blue);border-radius:6px;
+        padding:8px 11px;font-size:12.5px;color:#22354d}
+  .act{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  button{border:1px solid var(--line);background:#fff;border-radius:9px;padding:7px 14px;
+         font-size:13px;cursor:pointer;color:var(--ink);font-weight:600}
+  button:hover:not(:disabled){background:#f4f7fc;border-color:#c9d4e3}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  .btn-primary{background:var(--blue);border-color:var(--blue);color:#fff}
+  .btn-primary:hover:not(:disabled){background:#1765cc;border-color:#1765cc}
+  .btn-go{background:var(--green);border-color:var(--green);color:#fff}
+  .btn-go:hover:not(:disabled){background:#128a3f;border-color:#128a3f}
+  .btn-ghost{background:#fff}
+  .st{font-size:12px;color:var(--sub);display:flex;align-items:center;gap:6px}
+  .st b{color:var(--ink)}
+  .st.ok b{color:var(--green)} .st.err b{color:var(--red)} .st.wait b{color:var(--orange)}
+  .tx{font-family:var(--mono);font-size:11.5px;word-break:break-all;color:var(--blue)}
+  /* 结果表 */
+  .result{background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px;margin-top:14px}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th,td{text-align:left;padding:7px 9px;border-bottom:1px solid #eef2f7}
+  th{font-size:11.5px;color:var(--sub);font-weight:700;background:#fbfcfe}
+  tr:last-child td{border-bottom:none}
+  /* 判定四格 */
+  .judge{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
+  @media(max-width:1100px){.judge{grid-template-columns:1fr 1fr}}
+  .jbox{background:#fff;border:1px solid var(--line);border-radius:10px;padding:11px}
+  .jbox .jt{font-size:11px;font-weight:700;color:var(--sub);margin-bottom:6px}
+  .jbox .jv{font-size:12.5px;font-weight:600}
+  .jbox .jd{font-size:11.5px;color:var(--sub);margin-top:4px}
+  .verdict{margin-top:12px;border-radius:10px;padding:12px 14px;font-size:13.5px;font-weight:600}
+  .v-hit{background:#fff1f0;border:1px solid #f5c2c0;color:#a01d16}
+  .v-miss{background:#f2fbf5;border:1px solid #bfe6cd;color:#0f6b33}
+  /* 日志 */
+  .log{margin-top:16px;background:#0f172a;color:#94a3b8;border-radius:10px;padding:10px 12px;
+       font-family:var(--mono);font-size:11.5px;max-height:150px;overflow:auto;white-space:pre-wrap}
+  .log .t{color:#64748b}
+  .log .ok{color:#4ade80} .log .er{color:#f87171} .log .in{color:#60a5fa}
+  /* mock 横幅 */
+  .mockbar{background:#fffbeb;border-bottom:1px solid #fde68a;color:#92400e;font-size:12px;
+           padding:6px 18px}
+</style>
+</head>
+<body>
+
+<div class="mockbar">
+  <b>页面设计原型</b>　·　数据：<b id="dataStat">加载中…</b>　·　「发送」已接 <code>window.ethereum.request</code>；无钱包时回退 MOCK
+</div>
+
+<header>
+  <h1>上链测试 · On-chain Verification</h1>
+  <span class="env">把判为 X 的 Rp / Rm 真正发一遍，用链上结果反证 UI 是否欺诈</span>
+
+  <div class="statusbar">
+    <span class="pill" id="wsPill" title="点这里重新连接"><span class="dot" id="wsDot"></span>
+      WS <b id="wsAddr">未连接</b></span>
+    <span class="pill">钱包 <b id="acct">0xAbC1…9f02</b></span>
+    <span class="pill">链 <b id="chain">1 · Ethereum</b></span>
+    <span class="pill" id="modePill">模式 <b id="modeTxt">dry_run</b></span>
+    <span class="pill" id="walletPill">钱包 <b id="walletTxt">检测中</b></span>
+    <button class="btn-ghost" id="btnReconnect">重连</button>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- ============ 左栏：钱包分组 + 用例 ============ -->
+  <aside>
+    <div class="side-h">按钱包分组</div>
+    <div id="walletList"></div>
+
+    <div class="side-h" style="margin-top:16px">说明</div>
+    <div style="font-size:11.5px;color:#7c8794;line-height:1.6;padding:0 4px">
+      · 数据源：<code>ui_grade/&lt;wallet&gt;_x/verdicts.jsonl</code><br>
+      · 默认只显示 <b>变异引入</b>（真攻击向量）<br>
+      · 每条包含父 seed(Rp) 与变异 seed(Rm)<br>
+      · 发送走 WS 接口，不经 Appium 点 UI<br>
+      · 钱包弹窗仍需人工/Appium 确认
+    </div>
+  </aside>
+
+  <!-- ============ 右栏：详情 ============ -->
+  <main id="main">
+    <div class="empty" id="emptyTip">← 从左侧选择一个钱包和用例</div>
+    <div id="detail" style="display:none"></div>
+  </main>
+</div>
+
+<script src="onchain_data.js"></script>
+<script>
+/* =====================================================================
+ *  1. 数据：优先用 onchain_data.js（真实数据），否则回退 Mock
+ *     （真实数据由 fuzz_lab/onchain/gen_onchain_dataset.py 生成）（真实实现时由 WS 下发，结构与此完全一致）
+ * ===================================================================*/
+const MOCK = {
+  wallets: [
+    {
+      key: "trustwallet", name: "Trustwallet", chain: "Ethereum",
+      total: 111, mutation: 44, status: "done",
+      cases: [
+        {
+          case_id: "t0332", method: "eth_sendTransaction",
+          technique_id: 8, technique: "recipient 近似地址",
+          attribution: "mutation_induced", base_verdict: "!1", mut_verdict: "X",
+          reason: "基线有个人钱包黄色警告判 !1；变异界面代币身份丢失且金额单位缺失，直接显示裸数字 1000000",
+          rp: {
+            method: "eth_sendTransaction",
+            params: [{
+              from: "0xAbC1f0c9b3B0e2aB7cD4eE6f8A1b2C3d4E5F9f02",
+              to: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+              value: "0x0",
+              data: "0x095ea7b300000000000000000000000017eed3ad6051f833a7d0ccd0e5a973dfe4eba70200000000000000000000000000000000000000000000000000000000000f4240",
+              nonce: "0x1", chainId: "0x1"
+            }]
+          },
+          rm: {
+            method: "eth_sendTransaction",
+            params: [{
+              from: "0xAbC1f0c9b3B0e2aB7cD4eE6f8A1b2C3d4E5F9f02",
+              to: "0xd9170Fa2f6eda9ae6f337afB05fAFda3408ccD44",
+              value: "0x0",
+              data: "0x095ea7b300000000000000000000000017eed3ad6051f833a7d0ccd0e5a973dfe4eba70200000000000000000000000000000000000000000000000000000000000f4240",
+              nonce: "0x1", chainId: "0x1"
+            }]
+          },
+          decl_rp: "调用 USDC 的 approve(spender=0x17ee…a702, 1 USDC)；外层 value=0；chainId=1。",
+          decl_rm: "调用 0xd917…cD44 的 approve(spender=0x17ee…a702, 1000000 个最小单位)；外层 value=0；chainId=1。",
+          ui_rp: "USDC · 授权金额 1 USDC · Spender 0x17ee…a702 · 黄警告「给个人钱包授权」",
+          ui_rm: "标题只剩「授权」· 授权金额 1000000（无币种）· 无黄警告 · 无余额行"
+        },
+        {
+          case_id: "t0383", method: "eth_sendTransaction",
+          technique_id: 5, technique: "置零与撤销",
+          attribution: "mutation_induced", base_verdict: "!1", mut_verdict: "X",
+          reason: "基线含交易失败红色警告判 !1；变异仅展示原始 JSON 且数据截断，未解析代币数量判 X",
+          rp: {
+            method: "eth_sendTransaction",
+            params: [{
+              from: "0xAbC1f0c9b3B0e2aB7cD4eE6f8A1b2C3d4E5F9f02",
+              to: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+              value: "0x0",
+              data: "0xa9059cbb00000000000000000000000017eed3ad6051f833a7d0ccd0e5a973dfe4eba70200000000000000000000000000000000000000000000000000000000000f4240",
+              nonce: "0x1", chainId: "0x1"
+            }]
+          },
+          rm: {
+            method: "eth_sendTransaction",
+            params: [{
+              from: "0xAbC1f0c9b3B0e2aB7cD4eE6f8A1b2C3d4E5F9f02",
+              to: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+              value: "0x0",
+              data: "0xa9059cbb00000000000000000000000017eed3ad6051f833a7d0ccd0e5a973dfe4eba7020000000000000000000000000000000000000000000000000000000000000000",
+              nonce: "0x1", chainId: "0x1"
+            }]
+          },
+          decl_rp: "调用 USDC 的 transfer(recipient=0x17ee…a702, 1,000,000 个最小单位 = 1 USDC)。",
+          decl_rm: "调用 USDC 的 transfer(recipient=0x17ee…a702, 0 USDC)。",
+          ui_rp: "红块「模拟过程中交易执行被撤销。该交易将失败。」+ 资产 -1 USDC",
+          ui_rm: "只剩未解析原始 JSON，无红块，未显示代币数量"
+        },
+        {
+          case_id: "t0489", method: "eth_sendTransaction",
+          technique_id: 36, technique: "前导零",
+          attribution: "mutation_induced", base_verdict: "O", mut_verdict: "X",
+          reason: "基线清晰展示巨额变动；变异体真实金额巨大却显示为 0 ETH，属常规抹平",
+          rp: {
+            method: "eth_sendTransaction",
+            params: [{
+              from: "0xAbC1f0c9b3B0e2aB7cD4eE6f8A1b2C3d4E5F9f02",
+              to: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+              value: "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+              data: "0xd0e30db0", nonce: "0x1", chainId: "0x1"
+            }]
+          },
+          rm: {
+            method: "eth_sendTransaction",
+            params: [{
+              from: "0xAbC1f0c9b3B0e2aB7cD4eE6f8A1b2C3d4E5F9f02",
+              to: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+              value: "0x0ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+              data: "0xd0e30db0", nonce: "0x1", chainId: "0x1"
+            }]
+          },
+          decl_rp: "调用 WETH9.deposit()；外层 value = 2^256-1；chainId=1。",
+          decl_rm: "调用 WETH9.deposit()；外层 value = 2^256-1（数值完全相同，仅多一个前导零）；chainId=1。",
+          ui_rp: "-115,792,089,237,316,200,000,000,000,000 ETH / -$2.095e+62",
+          ui_rm: "0 ETH · $0.00（附黄字「无法加载资产预览」）"
+        }
+      ]
+    },
+    {
+      key: "bitget", name: "Bitget", chain: "Ethereum",
+      total: 118, mutation: 75, status: "done",
+      cases: [
+        {
+          case_id: "t2367", method: "eth_signTransaction",
+          technique_id: 36, technique: "前导零",
+          attribution: "mutation_induced", base_verdict: "!1", mut_verdict: "X",
+          reason: "基线含红色风险提示块；变异退化为元数据详情页，缺失交易基本信息与操作项",
+          rp: {
+            method: "eth_signTransaction",
+            params: [{
+              from: "0xAbC1f0c9b3B0e2aB7cD4eE6f8A1b2C3d4E5F9f02",
+              to: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+              value: "0x1", data: "0x", nonce: "0x1", chainId: "0x1",
+              gas: "0xf4240", gasPrice: "0x3b9aca00"
+            }]
+          },
+          rm: {
+            method: "eth_signTransaction",
+            params: [{
+              from: "0xAbC1f0c9b3B0e2aB7cD4eE6f8A1b2C3d4E5F9f02",
+              to: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+              value: "0x01", data: "0x", nonce: "0x1", chainId: "0x1",
+              gas: "0xf4240", gasPrice: "0x3b9aca00"
+            }]
+          },
+          decl_rp: "签名交易：to=WETH 合约，value=1 wei，data 为空（纯转账）；chainId=1。",
+          decl_rm: "签名交易：to=WETH 合约，value=1 wei（仅写法加前导零，数值不变），data 为空；chainId=1。",
+          ui_rp: "Signature confirmation · Asset change -0 ETH +0 WETH · 红块 Risky address or contract",
+          ui_rm: "Contract Interaction 页 · Asset change 区块消失 · Metadata → Call method dappsSign / Signature content 0x"
+        }
+      ]
+    },
+    {
+      key: "binance", name: "Binance", chain: "Ethereum",
+      total: 0, mutation: 0, status: "pending",
+      cases: []
+    }
+  ]
+};
+
+/* 选择数据源：真实数据 > Mock */
+let DATA = (window.ONCHAIN_DATA && Array.isArray(window.ONCHAIN_DATA.wallets)
+              && window.ONCHAIN_DATA.wallets.some(w => (w.cases || []).length))
+             ? window.ONCHAIN_DATA
+             : { schema: "mock", generated_at: "(mock)", wallets: MOCK.wallets };
+
+(function initDataStat(){
+  const el = document.getElementById("dataStat");
+  if (!el) return;
+  const tot = DATA.wallets.reduce((a, w) => a + (w.total || 0), 0);
+  const mi  = DATA.wallets.reduce((a, w) => a + (w.mutation || 0), 0);
+  el.textContent = DATA.schema === "mock"
+    ? `Mock 数据 ${tot} 条`
+    : `真实数据 ${tot} 条 X（变异引入 ${mi}）· 生成于 ${DATA.generated_at}`;
+})();
+
+/* =====================================================================
+ *  2. 状态
+ * ===================================================================*/
+const state = {
+  wallet: null,
+  filter: "mutation",     // mutation | all
+  caseId: null,
+  results: {},            // caseId -> { rp:{...}, rm:{...}, verified:bool }
+};
+
+function caseResult(id){
+  if(!state.results[id]) state.results[id] = { rp:null, rm:null, verified:false };
+  return state.results[id];
+}
+
+/* =====================================================================
+ *  2.5 WebSocket：PC 端接口驱动的通道
+ *      · 连上后 PC 下发 onchain_hello（含数据集）
+ *      · PC 可主动下发 onchain_send 让我发送某一步
+ *      · 我发完把 onchain_result 回传（PC 用它查 receipt 做上链判定）
+ * ===================================================================*/
+const WS = {
+  sock: null, url: "", ready: false, retry: 0,
+  status(kind, text){
+    const dot = document.getElementById("wsDot");
+    const addr = document.getElementById("wsAddr");
+    if (dot) { dot.className = "dot" + (kind === "on" ? " on" : kind === "warn" ? " warn" : ""); }
+    if (addr) addr.textContent = text;
+  },
+  connect(url){
+    this.url = url;
+    this.status("warn", "连接中… " + url);
+    try { this.sock = new WebSocket(url); } catch (e) {
+      this.status("", "地址非法"); return;
+    }
+    this.sock.onopen = () => {
+      this.ready = true; this.retry = 0;
+      this.status("on", url.replace(/^wss?:\/\//, "").split("/")[0]);
+      this.send({type: "onchain_ready", account: ACCOUNT, chainId: 1});
+      log("ok", "WS 已连接 " + url);
+    };
+    this.sock.onclose = () => {
+      this.ready = false;
+      this.status("", "未连接");
+      log("er", "WS 断开，3s 后重连");
+      if (this.retry++ < 20) setTimeout(() => this.connect(this.url), 3000);
+    };
+    this.sock.onerror = () => this.status("warn", "连接错误");
+    this.sock.onmessage = (ev) => {
+      let m; try { m = JSON.parse(ev.data); } catch { return; }
+      this.dispatch(m);
+    };
+  },
+  send(obj){
+    if (!this.ready) return false;
+    try { this.sock.send(JSON.stringify(obj)); return true; } catch { return false; }
+  },
+  dispatch(m){
+    if (m.type === "onchain_hello"){
+      if (m.mode) { SEND_MODE = m.mode; renderMode(); }
+      if (m.dataset && Array.isArray(m.dataset.wallets) && m.dataset.wallets.length){
+        DATA = m.dataset;
+        state.wallet = null; state.caseId = null; state.results = {};
+        renderWallets(); renderDetail();
+        const tot = DATA.wallets.reduce((a,w)=>a+(w.total||0),0);
+        document.getElementById("dataStat").textContent =
+          `WS 下发 ${tot} 条 X · 生成于 ${DATA.generated_at || "?"}`;
+        log("ok", `收到数据集：${tot} 条用例`);
+        // 重新应用深链（?case= / ?wallet= / ?filter=）
+        {
+          const _q = new URLSearchParams(location.search);
+          if (_q.get("filter") === "all") state.filter = "all";
+          const _cid = _q.get("case"), _wk = _q.get("wallet");
+          if (_cid) selectCase(_cid);
+          else if (_wk) { state.wallet = _wk; renderWallets(); }
+        }
+      }
+    } else if (m.type === "onchain_send"){
+      log("in", `PC 要求发送 ${m.case_id}:${m.step}`);
+      selectCase(m.case_id);
+      setTimeout(() => {
+        const c = findCase();
+        if (c) sendStep(c, m.step || "rp");
+      }, 300);
+    } else if (m.type === "onchain_reset"){
+      const c = findCase();
+      if (c && c.case_id === m.case_id){ state.results[m.case_id] = {rp:null,rm:null,verified:false}; renderDetail(); }
+    } else if (m.type === "ping"){
+      this.send({type: "pong", ts: Date.now()/1000});
+    }
+  }
+};
+const ACCOUNT = "0xAbC1f0c9b3B0e2aB7cD4eE6f8A1b2C3d4E5F9f02";
+
+/* ---------------------------------------------------------------
+ * 无钱包环境下的 Mock Provider（?mockwallet=1）
+ * 用来在 PC 浏览器里验证「预处理 → 发送 → 回传」整条链路
+ * ------------------------------------------------------------- */
+(function installMockWallet(){
+  const q = new URLSearchParams(location.search);
+  if (q.get("mockwallet") !== "1") return;
+  const ACCT = "0xAbC1f0c9b3B0e2aB7cD4eE6f8A1b2C3d4E5F9f02";
+  const rnd = () => Array.from({length: 64}, () =>
+    "0123456789abcdef"[Math.floor(Math.random()*16)]).join("");
+  window.ethereum = {
+    isMock: true,
+    request: async ({ method, params }) => {
+      await new Promise(r => setTimeout(r, 260));
+      switch (method){
+        case "eth_requestAccounts":
+        case "eth_accounts":          return [ACCT];
+        case "eth_chainId":           return "0x1";
+        case "eth_getTransactionCount": return "0x7";
+        case "eth_estimateGas":       return "0x9fbf";
+        case "eth_sendTransaction":
+        case "eth_signTransaction":   return "0x" + rnd();
+        case "personal_sign":
+        case "eth_sign":              return "0x" + rnd();
+        case "eth_signTypedData_v3":
+        case "eth_signTypedData_v4":  return "0x" + rnd();
+        default:                      return null;
+      }
+    },
+  };
+})();
+
+/* 发送模式：由 PC 下发（dry_run=只估算 / live=真发交易） */
+let SEND_MODE = "dry_run";
+let HAS_WALLET = (typeof window !== "undefined" && !!window.ethereum);
+
+function selectCase(cid){
+  for (const w of DATA.wallets){
+    const c = (w.cases||[]).find(x => x.case_id === cid);
+    if (c){ state.wallet = w.key; state.caseId = cid; renderWallets(); renderDetail(); return; }
+  }
+}
+
+function renderMode(){
+  const mt = document.getElementById("modeTxt");
+  const mp = document.getElementById("modePill");
+  if (mt) mt.textContent = SEND_MODE;
+  if (mp){
+    mp.className = "pill" + (SEND_MODE === "live" ? " mode-live" : "");
+  }
+  const wt = document.getElementById("walletTxt");
+  if (wt) wt.textContent = HAS_WALLET ? "window.ethereum ✓" : "无（预览）";
+}
+
+/* =====================================================================
+ *  3. 左栏渲染
+ * ===================================================================*/
+function countOf(w, mode){
+  return mode === "all" ? w.total : w.mutation;
+}
+
+function renderWallets(){
+  const box = document.getElementById("walletList");
+  box.innerHTML = "";
+  DATA.wallets.forEach(w => {
+    const wrap = document.createElement("div");
+    wrap.className = "wallet";
+
+    const h = document.createElement("div");
+    h.className = "wallet-h" + (state.wallet === w.key ? " active" : "");
+    h.innerHTML = `
+      <span class="dot ${w.status==='done'?'on':''}"></span>
+      <span class="nm">${w.name}</span>
+      <span class="cnt">${w.total} 条 X</span>`;
+    h.onclick = () => {
+      state.wallet = (state.wallet === w.key) ? null : w.key;
+      state.caseId = null;
+      renderWallets(); renderDetail();
+    };
+    wrap.appendChild(h);
+
+    const body = document.createElement("div");
+    body.className = "wallet-body" + (state.wallet === w.key ? " open" : "");
+
+    if (w.status !== "done"){
+      body.innerHTML = `<div style="font-size:12px;color:#94a3b8;padding:8px 4px">
+        尚未判定（先跑 capture + ui_grade）</div>`;
+      wrap.appendChild(body); box.appendChild(wrap); return;
+    }
+
+    // 筛选条
+    const bar = document.createElement("div");
+    bar.className = "chipbar";
+    bar.innerHTML = `
+      <span class="chip ${state.filter==='mutation'?'on':''}" data-f="mutation">变异引入 ${w.mutation}</span>
+      <span class="chip ${state.filter==='all'?'on':''}" data-f="all">全部 ${w.total}</span>`;
+    bar.querySelectorAll(".chip").forEach(c => c.onclick = () => {
+      state.filter = c.dataset.f; renderWallets();
+    });
+    body.appendChild(bar);
+
+    // 用例列表
+    const shown = state.filter === "all"
+      ? w.cases
+      : w.cases.filter(c => c.attribution === "mutation_induced");
+    if (!shown.length){
+      body.insertAdjacentHTML("beforeend",
+        `<div style="font-size:12px;color:#94a3b8;padding:6px 4px">该筛选下没有用例</div>`);
+    }
+    shown.forEach(c => {
+      const el = document.createElement("div");
+      const r = caseResult(c.case_id);
+      const st = r.verified ? "✅" : (r.rp && r.rm ? "◐" : "○");
+      el.className = "case" + (state.caseId === c.case_id ? " active" : "");
+      el.innerHTML = `
+        <div>
+          <div class="cid">${st} ${c.case_id}</div>
+          <div class="meta">${c.method} · 手段 ${c.technique_id} ${c.technique}</div>
+        </div>
+        <div class="right">
+          <span class="badge ${c.attribution==='mutation_induced'?'b-mi':'b-bd'}">
+            ${c.attribution==='mutation_induced'?'变异引入':'基线固有'}</span>
+        </div>`;
+      el.onclick = () => { state.caseId = c.case_id; renderWallets(); renderDetail(); };
+      body.appendChild(el);
+    });
+
+    wrap.appendChild(body);
+    box.appendChild(wrap);
+  });
+}
+
+/* =====================================================================
+ *  4. 详情渲染
+ * ===================================================================*/
+function findCase(){
+  const w = DATA.wallets.find(x => x.key === state.wallet);
+  return w && w.cases.find(c => c.case_id === state.caseId);
+}
+
+function jsonHTML(obj){
+  const s = JSON.stringify(obj, null, 2)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/"([^"]+)":/g,'<span class="k">"$1"</span>:')
+    .replace(/: "([^"]*)"/g,': <span class="s">"$1"</span>')
+    .replace(/: (\d+)/g,': <span class="n">$1</span>');
+  return s;
+}
+
+function statusHTML(r, label){
+  if (!r) return `<span class="st"><span class="dot"></span>未发送</span>`;
+  if (r.state === "waiting") return `<span class="st wait"><span class="dot warn"></span>等待钱包确认…</span>`;
+  if (r.state === "ok"){
+    if (r.kind === "skip")
+      return `<span class="st wait"><span class="dot warn"></span>
+        跳过 · ${r.effect || ""}</span>`;
+    if (r.kind === "estimate")
+      return `<span class="st ok"><span class="dot on"></span>
+        dry_run 通过 · <span class="tx">${r.tx}</span></span>`;
+    if (r.kind === "signature")
+      return `<span class="st ok"><span class="dot on"></span>
+        已签名（未广播）· <span class="tx">${String(r.signature || "").slice(0, 18)}…</span></span>`;
+    if (r.kind === "mock")
+      return `<span class="st wait"><span class="dot warn"></span>
+        MOCK · <span class="tx">${r.tx}</span></span>`;
+    return `<span class="st ok"><span class="dot on"></span>
+      已广播 · tx <span class="tx">${r.tx}</span></span>`;
+  }
+  if (r.state === "rejected") return `<span class="st err"><span class="dot"></span>
+    <b>用户拒绝</b> · code ${r.code}</span>`;
+  return `<span class="st err"><span class="dot"></span><b>失败</b> · ${r.msg}</span>`;
+}
+
+function renderDetail(){
+  const c = findCase();
+  const main = document.getElementById("main");
+  if (!c){
+    document.getElementById("emptyTip").style.display = "";
+    document.getElementById("detail").style.display = "none";
+    return;
+  }
+  document.getElementById("emptyTip").style.display = "none";
+  const d = document.getElementById("detail");
+  d.style.display = "";
+  const r = caseResult(c.case_id);
+
+  d.innerHTML = `
+    <div class="detail-h">
+      <span class="cid">${c.case_id}</span>
+      <span class="badge b-blue">${c.method}</span>
+      <span class="badge b-gray">手段 ${c.technique_id} · ${c.technique}</span>
+      <span class="badge b-w1">基线 ${c.base_verdict}</span>
+      <span class="badge b-x">变异 X</span>
+      <span class="badge ${c.attribution==='mutation_induced'?'b-mi':'b-bd'}">
+        ${c.attribution==='mutation_induced'?'变异引入':'基线固有'}</span>
+      ${c.prejudge ? `<span class="badge ${c.prejudge.verdict==='onchain_confirmed'?'b-x':'b-ok'}"
+        title="规则引擎预判（未上链）">规则预判 · ${
+          c.prejudge.verdict==='onchain_confirmed' ? '欺诈成立'
+          : c.prejudge.verdict==='ui_faithful' ? 'UI 已披露' : '未执行'
+        }${c.prejudge.missing_items.length?`（漏 ${c.prejudge.missing_items.join('、')}）`:''}</span>` : ''}
+    </div>
+    <div class="reason">${c.reason}</div>
+    ${c.prejudge ? `<div class="prejudge">
+      <b>规则引擎预判</b>（未上链，基于「链上按真值执行」的假设）：
+      <code>${c.prejudge.verdict}</code>　置信度 <b>${c.prejudge.confidence||'—'}</b>
+      ${c.prejudge.missing_items.length
+        ? `　漏披露：<b>${c.prejudge.missing_items.join('、')}</b>` : ''}
+      <div style="margin-top:4px;color:#6b7684">${c.prejudge.note||''}</div>
+    </div>` : ''}
+
+    <div class="sec-title">请求内容（父 seed / 变异 seed）</div>
+    <div class="pair">
+      ${reqCard("rp", "父 seed · Rp", "原始请求（对照基准）", c.rp, c.decl_rp, c.ui_rp, r.rp, (c.shots||{}).baseline)}
+      ${reqCard("rm", "变异 seed · Rm", "实际提交给钱包的请求", c.rm, c.decl_rm, c.ui_rm, r.rm, (c.shots||{}).mutant)}
+    </div>
+
+    <div class="sec-title">上链结果</div>
+    <div class="result">
+      <table>
+        <thead><tr><th>步骤</th><th>方法</th><th>状态</th><th>tx hash</th><th>链上效果</th></tr></thead>
+        <tbody id="resBody">${resRows(c, r)}</tbody>
+      </table>
+      <details id="preparedBox" style="margin-top:10px;display:none">
+        <summary style="cursor:pointer;font-size:12px;color:#1a73e8;font-weight:600">
+          查看实际发送参数（已替换占位符 / 刷新 nonce）</summary>
+        <pre class="json" id="preparedJson" style="max-height:200px;margin-top:8px"></pre>
+      </details>
+      <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <button class="btn-go" id="btnVerify"
+          ${(!(r.rp && r.rp.state==='ok' && r.rm && r.rm.state==='ok') || r.verified) ? "disabled" : ""}>
+          确认上链测试</button>
+        <span style="font-size:12px;color:#6b7684">
+          需 Rp 与 Rm 两笔都已确认上链后才能判定</span>
+        ${r.verified ? '<span class="badge b-ok">已判定</span>' : ""}
+      </div>
+    </div>
+
+    <div class="sec-title">上链判定（UI 声明 ↔ 请求真值 ↔ 链上效果）</div>
+    ${judgeBlock(c, r)}
+
+    <div class="sec-title">WS 日志</div>
+    <div class="log" id="log"></div>
+  `;
+
+  bindReqButtons(c, r);
+  const bv = document.getElementById("btnVerify");
+  if (bv) bv.onclick = () => doVerify(c);
+  renderLog();
+}
+
+function reqCard(key, title, sub, req, decl, ui, res, shots){
+  const shotHTML = (shots && shots.length)
+    ? `<div class="shots">${shots.map((s,i) =>
+        `<a href="${s}" target="_blank" title="点开原图"><img src="${s}" loading="lazy"
+           onerror="this.parentNode.style.display='none'">
+           <span>L${i}</span></a>`).join("")}</div>`
+    : "";
+  return `
+  <div class="req">
+    <div class="req-h">
+      <span class="t">${title}</span><span class="sub">${sub}</span>
+      <span style="margin-left:auto">${key==='rp'
+        ? '<span class="badge b-gray">Rp</span>'
+        : '<span class="badge b-blue">Rm</span>'}</span>
+    </div>
+    <div class="req-b">
+      ${shotHTML}
+      <pre class="json">${jsonHTML(req)}</pre>
+      <div class="decl"><b>语义意图：</b>${decl}</div>
+      <div class="decl" style="border-color:#ea8600;background:#fffaf0">
+        <b>钱包界面当时展示：</b>${ui}</div>
+      ${hasPlaceholder(req) ? `<div class="decl" style="border-color:#c084fc;background:#faf5ff">
+        ⚠ 该请求含占位符 <code>{{address}}</code>，发送时会自动替换为当前钱包账户</div>` : ""}
+      <div class="act">
+        <button class="btn-primary" data-send="${key}">发送 ${key==='rp'?'Rp':'Rm'}</button>
+        <button class="btn-ghost" data-copy="${key}">复制 JSON</button>
+        <button class="btn-ghost" data-shot="${key}">查看截图</button>
+      </div>
+      <div id="st-${key}">${statusHTML(res)}</div>
+    </div>
+  </div>`;
+}
+
+function resRows(c, r){
+  const row = (label, res) => {
+    const st = !res ? '<span class="badge b-gray">未发送</span>'
+      : res.state === "ok" && res.kind === "tx" ? '<span class="badge b-ok">已广播</span>'
+      : res.state === "ok" && res.kind === "estimate" ? '<span class="badge b-blue">估算通过</span>'
+      : res.state === "ok" && res.kind === "signature" ? '<span class="badge b-purple">已签名</span>'
+      : res.state === "ok" ? '<span class="badge b-w1">MOCK</span>'
+      : res.state === "waiting" ? '<span class="badge b-w1">确认中</span>'
+      : '<span class="badge b-x">失败</span>';
+    return `<tr>
+      <td>${label}</td><td><code>${c.method}</code></td>
+      <td>${st}</td>
+      <td class="tx">${res && res.tx ? res.tx : "—"}</td>
+      <td>${res && res.effect ? res.effect : "—"}</td></tr>`;
+  };
+  return row("Rp 父请求", r.rp) + row("Rm 变异请求", r.rm);
+}
+
+function judgeBlock(c, r){
+  const done = r.verified;
+  return `
+  <div class="judge">
+    <div class="jbox"><div class="jt">① 请求真值（Rp→Rm）</div>
+      <div class="jv">${c.technique}</div>
+      <div class="jd">${c.decl_rp}</div></div>
+    <div class="jbox"><div class="jt">② 钱包 UI 声明</div>
+      <div class="jv">${done ? "已比对" : "待比对"}</div>
+      <div class="jd">${c.ui_rm}</div></div>
+    <div class="jbox"><div class="jt">③ 链上实际效果</div>
+      <div class="jv">${done ? "已采集" : "待采集"}</div>
+      <div class="jd">${done ? "Rp: 1 USDC 转出 / 授权 1 USDC<br>Rm: 授权 1,000,000 最小单位" : "发送并存证后填入"}</div></div>
+    <div class="jbox"><div class="jt">④ 判定</div>
+      <div class="jv">${done ? "语义欺诈成立" : "—"}</div>
+      <div class="jd">${done ? "UI 未披露 Rm 的真实授权额度" : "Rp/Rm 都上链后自动判定"}</div></div>
+  </div>
+  ${done ? `<div class="verdict v-hit">
+      ✅ 判定：<b>语义欺诈成立（onchain_confirmed）</b> ——
+      链上确实执行了 Rm 的真实语义，而 UI 展示的是另一套语义，用户按 UI 理解签名即造成实际损失。
+    </div>` : ""}`;
+}
+
+/* =====================================================================
+ *  5. 交互（原型：模拟发送）
+ * ===================================================================*/
+const LOGS = [];
+function log(level, msg){
+  const t = new Date().toLocaleTimeString("zh-CN", {hour12:false});
+  LOGS.push({t, level, msg});
+  renderLog();
+}
+function renderLog(){
+  const el = document.getElementById("log");
+  if (!el) return;
+  el.innerHTML = LOGS.slice(-12).map(l =>
+    `<span class="t">[${l.t}]</span> <span class="${l.level==='ok'?'ok':l.level==='er'?'er':'in'}">${l.msg}</span>`
+  ).join("\n") || '<span class="t">等待连接…</span>';
+}
+
+function bindReqButtons(c, r){
+  document.querySelectorAll("[data-send]").forEach(b => {
+    b.onclick = () => sendStep(c, b.dataset.send);
+  });
+  document.querySelectorAll("[data-copy]").forEach(b => {
+    b.onclick = () => {
+      const req = b.dataset.copy === "rp" ? c.rp : c.rm;
+      navigator.clipboard && navigator.clipboard.writeText(JSON.stringify(req, null, 2));
+      log("in", `复制 ${b.dataset.copy.toUpperCase()} JSON 到剪贴板`);
+    };
+  });
+  document.querySelectorAll("[data-shot]").forEach(b => {
+    b.onclick = () => log("in", `打开 ${b.dataset.shot.toUpperCase()} 截图（原型占位）`);
+  });
+}
+
+/* ---------------------------------------------------------------
+ * 发送前参数预处理（非常重要）
+ *   1. 替换 {{address}} → 当前钱包账户
+ *   2. 交易类刷新 nonce（种子里的 nonce 是旧的，直接用会冲突）
+ *   3. chainId 与当前链不一致时警告（不覆盖，因为可能是变异目标）
+ *   4. 去掉 gas 相关字段，让钱包自己估算
+ * ------------------------------------------------------------- */
+const TX_METHODS = ["eth_sendTransaction", "eth_signTransaction"];
+const GAS_FIELDS = ["gas", "gasPrice", "maxFeePerGas", "maxPriorityFeePerGas"];
+
+function hasPlaceholder(req){
+  return /\{\{[^}]+\}\}/.test(JSON.stringify(req.params || []));
+}
+
+async function prepareParams(req){
+  const notes = [];
+  let params;
+  try {
+    params = JSON.parse(JSON.stringify(req.params || []));
+  } catch { params = req.params || []; }
+
+  // 1) {{address}} 替换
+  let s = JSON.stringify(params);
+  const before = s;
+  s = s.replace(/\{\{\s*address\s*\}\}/gi, ACCOUNT);
+  if (s !== before) notes.push(`{{address}} → ${ACCOUNT}`);
+  // 其他未知占位符
+  const left = s.match(/\{\{[^}]+\}\}/g);
+  if (left) notes.push(`⚠ 仍有未替换占位符：${[...new Set(left)].join(", ")}`);
+  params = JSON.parse(s);
+
+  const isTx = TX_METHODS.includes(req.method);
+  if (isTx && params[0] && typeof params[0] === "object"){
+    const tx = params[0];
+    // 2) 刷新 nonce
+    try {
+      const n = await window.ethereum.request({
+        method: "eth_getTransactionCount", params: [tx.from, "pending"],
+      });
+      if (n) { notes.push(`nonce ${tx.nonce} → ${n}`); tx.nonce = n; }
+    } catch (e) { notes.push(`nonce 刷新失败（保留 ${tx.nonce}）`); }
+    // 3) chainId 校验
+    try {
+      const cid = await window.ethereum.request({ method: "eth_chainId", params: [] });
+      if (tx.chainId && String(tx.chainId).toLowerCase() !== String(cid).toLowerCase()){
+        notes.push(`⚠ chainId 不一致：请求 ${tx.chainId} / 当前链 ${cid}`);
+      }
+    } catch (e) { /* ignore */ }
+    // 4) 去掉 gas 字段
+    const removed = [];
+    for (const f of GAS_FIELDS){
+      if (f in tx) { removed.push(f); delete tx[f]; }
+    }
+    if (removed.length) notes.push(`移除 gas 字段：${removed.join(", ")}（由钱包估算）`);
+  }
+  return { params, notes };
+}
+
+async function sendStep(c, step){
+  const r = caseResult(c.case_id);
+  const btn = document.querySelector(`[data-send="${step}"]`);
+  if (btn) btn.disabled = true;
+
+  r[step] = { state: "waiting" };
+  WS.send({type: "onchain_sent", case_id: c.case_id, step});
+  document.getElementById("st-" + step).innerHTML = statusHTML(r[step]);
+  document.getElementById("resBody").innerHTML = resRows(c, r);
+  log("in", `→ WS 下发 ${step.toUpperCase()} ${c.case_id} ${c[step].method}`);
+  log("in", "   页内调用 window.ethereum.request(...) → 等待钱包弹窗确认");
+
+  // ---- 真正发送：走 window.ethereum.request（接口，不经 Appium 点 UI）----
+  const req = c[step];
+  const isSignOnly = !TX_METHODS.includes(req.method);
+
+  if (!HAS_WALLET){
+    // 浏览器预览（没有钱包）→ 演示数据，明确标记 MOCK
+    setTimeout(() => {
+      r[step] = { state: "ok", kind: "mock",
+                  tx: "MOCK-0x" + Math.random().toString(16).slice(2, 10),
+                  effect: "（预览环境无钱包，演示数据）" };
+      log("warn", "无 window.ethereum，使用 MOCK 数据（请在钱包内置浏览器打开）");
+      afterSend(c, step, r, btn);
+    }, 1200);
+    return;
+  }
+
+  let prepared;
+  try {
+    prepared = await prepareParams(req);
+    if (prepared.notes.length) log("in", "参数预处理: " + prepared.notes.join(" | "));
+    window.__lastPrepared = prepared;   // 供结果区展示
+  } catch (e) {
+    prepared = { params: req.params, notes: ["参数预处理失败"] };
+  }
+
+  try {
+    if (SEND_MODE === "dry_run" && isSignOnly){
+      r[step] = { state: "ok", kind: "skip",
+                  tx: "（签名类方法无 dry_run）",
+                  effect: "签名类不能估算 gas；需 live 才能验签名内容" };
+      log("warn", "签名类方法跳过 dry_run（请用 -Mode live 验签名）");
+    } else if (SEND_MODE === "dry_run"){
+      // 只估算，不发交易：能跑通 → 不会 revert；抛错 → 会 revert
+      const gas = await window.ethereum.request({
+        method: "eth_estimateGas",
+        params: prepared.params,
+      });
+      r[step] = { state: "ok", kind: "estimate",
+                  tx: `gas=${parseInt(gas, 16)}（未上链）`,
+                  effect: "dry_run：估算通过，未真正发交易" };
+      log("ok", `← dry_run 估算通过 gas=${parseInt(gas, 16)}`);
+    } else {
+      const res = await window.ethereum.request({ method: req.method, params: prepared.params });
+      const isTx = typeof res === "string" && /^0x[0-9a-fA-F]{64}$/.test(res);
+      r[step] = isTx
+        ? { state: "ok", kind: "tx", tx: res, effect: "已广播，等待 receipt" }
+        : { state: "ok", kind: "signature", tx: "（签名结果）",
+            effect: "签名类：只返回签名，未广播", signature: res };
+      log("ok", isTx ? `← 已广播 tx=${res}` : "← 返回签名（未广播）");
+    }
+    WS.send({type: "onchain_result", case_id: c.case_id, step,
+             status: "success", tx_hash: r[step].kind === "tx" ? r[step].tx : null,
+             kind: r[step].kind, raw: r[step].signature || null, error: null});
+  } catch (e) {
+    const code = e && (e.code || (e.data && e.data.code));
+    const msg = (e && (e.message || (e.data && e.data.message))) || String(e);
+    r[step] = { state: code === 4001 ? "rejected" : "error", code, msg };
+    log("er", `← 钱包返回错误 code=${code} ${msg}`);
+    WS.send({type: "onchain_result", case_id: c.case_id, step,
+             status: code === 4001 ? "rejected" : "error",
+             tx_hash: null, error: {code, message: msg}});
+  }
+  afterSend(c, step, r, btn);
+}
+
+function afterSend(c, step, r, btn){
+  // 展示实际发送的参数
+  const box = document.getElementById("preparedBox");
+  const pre = document.getElementById("preparedJson");
+  if (box && pre && window.__lastPrepared){
+    const p = window.__lastPrepared;
+    pre.textContent = JSON.stringify(p.params, null, 2)
+      + (p.notes.length ? "\n\n// 预处理：\n// " + p.notes.join("\n// ") : "");
+    box.style.display = "";
+  }
+  document.getElementById("st-" + step).innerHTML = statusHTML(r[step]);
+  document.getElementById("resBody").innerHTML = resRows(c, r);
+  const bv = document.getElementById("btnVerify");
+  if (bv) bv.disabled = !(r.rp && r.rp.state === "ok" && r.rm && r.rm.state === "ok");
+  if (bv) bv.onclick = () => doVerify(c);
+  if (btn) btn.disabled = false;
+}
+
+function doVerify(c){
+  const r = caseResult(c.case_id);
+  if (!(r.rp && r.rp.state === "ok" && r.rm && r.rm.state === "ok")) return;
+  r.verified = true;
+  log("ok", `✔ 上链判定完成：${c.case_id} → onchain_confirmed`);
+  renderWallets();
+  renderDetail();
+}
+
+/* =====================================================================
+ *  6. 顶栏
+ * ===================================================================*/
+document.getElementById("btnReconnect").onclick = () => {
+  const q = new URLSearchParams(location.search);
+  const url = q.get("ws") || WS.url || "ws://127.0.0.1:8766";
+  if (WS.sock) { try { WS.sock.close(); } catch {} }
+  log("in", "重新连接 WS … " + url);
+  WS.connect(url);
+};
+
+/* 启动 */
+(function autoSelect(){
+  const q = new URLSearchParams(location.search);
+  const cid = q.get("case");
+  const wk = q.get("wallet");
+  if (!cid && !wk) return;
+  const w = wk ? DATA.wallets.find(x => x.key === wk)
+               : DATA.wallets.find(x => (x.cases || []).some(c => c.case_id === cid));
+  if (!w) return;
+  state.wallet = w.key;
+  if (cid) state.caseId = cid;
+  if (q.get("filter") === "all") state.filter = "all";
+  // 演示态：?case=t0332&demo=done 预填「已上链 + 已判定」
+  if (q.get("demo") === "done" && cid) {
+    state.results[cid] = {
+      rp: { state: "ok", tx: "0x8f2c41d7a0b93e5c6d1f4a2b7e9c0d3f5a6b8c1e2d4f7a9b0c3e5d6f8a1b2c4d",
+           effect: "Approval(owner=0xAbC1…, spender=0x17ee…a702, amount=1,000,000)" },
+      rm: { state: "ok", tx: "0x3a7e9c1d5b8f2a4c6e0d7b3f9a1c5e8d2b4f6a0c7e9d1b3f5a8c2e4d6b0f9a1c",
+           effect: "Approval(owner=0xAbC1…, spender=0x17ee…a702, amount=1,000,000) ← 代币合约不同" },
+      verified: true
+    };
+  }
+})();
+
+renderMode();
+renderWallets();
+renderDetail();
+log("in", `页面加载完成 · 数据源 ${DATA.schema} · 用例 ${DATA.wallets.reduce((a,w)=>a+(w.total||0),0)} 条`);
+
+/* ?autosend=rp|rm 自动发一次（演示/调试用） */
+(function autoSend(){
+  const q = new URLSearchParams(location.search);
+  const step = q.get("autosend");
+  if (!step) return;
+  setTimeout(() => {
+    const c = findCase();
+    if (c) sendStep(c, step);
+  }, 800);
+})();
+
+/* 自动连接 PC 端服务：?ws=ws://... 或默认 ws://127.0.0.1:8766 */
+(function applyModeParam(){
+  const q = new URLSearchParams(location.search);
+  const m = q.get("mode");
+  if (m === "live" || m === "dry_run") { SEND_MODE = m; renderMode(); }
+})();
+
+(function autoConnect(){
+  const q = new URLSearchParams(location.search);
+  const url = q.get("ws") || "ws://127.0.0.1:8766";
+  if (q.get("nows") === "1") { WS.status("", "未连接（nows=1）"); return; }
+  WS.connect(url);
+})();
+</script>
+</body>
+</html>
