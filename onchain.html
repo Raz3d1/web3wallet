@@ -6,175 +6,263 @@
 <title>上链测试 · On-chain Verification</title>
 <style>
   :root{
-    --bg:#f4f6f9; --card:#fff; --line:#e3e8ef; --ink:#1b2430; --sub:#6b7684;
-    --blue:#1a73e8; --green:#16a34a; --orange:#ea8600; --red:#d93025; --purple:#7c3aed;
-    --mono:ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;
+    --bg:#f6f7f9; --surface:#fff; --surface-2:#fbfbfd;
+    --line:#e7e9ee; --line-2:#eff1f4;
+    --ink:#14161a; --ink-2:#4c5562; --ink-3:#8a93a1;
+    --accent:#4f46e5; --accent-soft:#eef0ff;
+    --ok:#0f9d6e; --warn:#c2740a; --err:#d33b3b;
+    --mono:"SF Mono",ui-monospace,"JetBrains Mono",Consolas,"Liberation Mono",monospace;
+    --radius:12px;
+    --shadow:0 1px 2px rgba(16,24,40,.05),0 1px 3px rgba(16,24,40,.03);
   }
   *{box-sizing:border-box}
+  .cols,.panel,.panel-body,.card,.judge,.jbox,.case-head,.note{min-width:0}
+  .code{min-width:0;max-width:100%}
   body{margin:0;background:var(--bg);color:var(--ink);
-       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Microsoft YaHei",sans-serif;
-       font-size:14px;line-height:1.5}
+       font:400 14px/1.55 "SF Pro Text",-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+       -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  code{font-family:var(--mono)}
+
   /* ---------- 顶栏 ---------- */
-  header{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid var(--line);
-         padding:12px 18px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;
-         box-shadow:0 1px 4px rgba(16,24,40,.04)}
-  header h1{margin:0;font-size:17px;font-weight:700;letter-spacing:.3px}
-  header .env{font-size:12px;color:var(--sub)}
-  .statusbar{display:flex;gap:10px;flex-wrap:wrap;margin-left:auto;align-items:center}
-  .pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);
-        border-radius:999px;padding:4px 11px;font-size:12px;background:#fbfcfe;color:var(--sub)}
-  .pill b{color:var(--ink);font-weight:600}
-  .dot{width:8px;height:8px;border-radius:50%;background:#c4cbd4;display:inline-block}
-  .dot.on{background:var(--green);box-shadow:0 0 0 3px rgba(22,163,74,.15)}
-  .dot.warn{background:var(--orange)}
-  .mode-live{border-color:#f3c1bd;background:#fff5f4;color:var(--red)}
+  .topbar{position:sticky;top:0;z-index:30;height:58px;display:flex;align-items:center;gap:18px;padding:0 20px;
+          background:rgba(255,255,255,.88);backdrop-filter:saturate(180%) blur(14px);
+          border-bottom:1px solid var(--line)}
+  .brand{display:flex;align-items:center;gap:10px;min-width:0}
+  .brand-mark{width:26px;height:26px;border-radius:8px;flex:0 0 auto;
+              background:linear-gradient(135deg,#6366f1,#8b5cf6);
+              box-shadow:0 2px 6px rgba(99,102,241,.32);
+              display:grid;place-items:center;color:#fff;font-size:12px;font-weight:700}
+  .brand-title{font-size:14.5px;font-weight:650;line-height:1.15;letter-spacing:.01em}
+  .brand-sub{font-size:10px;color:var(--ink-3);letter-spacing:.09em;text-transform:uppercase}
+  .topbar-right{margin-left:auto;display:flex;align-items:center;gap:7px;min-width:0}
+  .pill{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:7px;
+        background:#f4f5f8;color:var(--ink-3);font-size:11.5px;white-space:nowrap}
+  .pill b{color:var(--ink-2);font-weight:600}
+  .pill.mode-live{background:#fdf1f0;color:var(--err)}
+  .pill.mode-live b{color:var(--err)}
+  .dot{width:7px;height:7px;border-radius:50%;background:#ccd2dc;display:inline-block;flex:0 0 auto}
+  .dot.on{background:var(--ok);box-shadow:0 0 0 3px rgba(15,157,110,.14)}
+  .dot.warn{background:var(--warn);box-shadow:0 0 0 3px rgba(194,116,10,.14)}
+
+  .subbar{height:32px;display:flex;align-items:center;gap:9px;padding:0 22px;
+          background:var(--surface);border-bottom:1px solid var(--line-2);
+          font-size:11.5px;color:var(--ink-3);overflow:hidden;white-space:nowrap}
+
   /* ---------- 布局 ---------- */
-  .layout{display:grid;grid-template-columns:288px 1fr;height:calc(100vh - 62px)}
-  @media(max-width:960px){.layout{grid-template-columns:1fr;height:auto}}
-  /* 左侧 */
-  aside{background:#fff;border-right:1px solid var(--line);overflow:auto;padding:12px}
-  .side-h{font-size:11.5px;font-weight:700;color:var(--sub);letter-spacing:.6px;
-          text-transform:uppercase;margin:6px 4px 8px}
-  .wallet{border:1px solid var(--line);border-radius:10px;margin-bottom:8px;overflow:hidden}
-  .wallet-h{display:flex;align-items:center;gap:8px;padding:9px 11px;cursor:pointer;
-            background:#fbfcfe}
-  .wallet-h:hover{background:#f1f5fb}
-  .wallet-h.active{background:#e8f0fe}
-  .wallet-h .nm{font-weight:600;font-size:13.5px}
-  .wallet-h .cnt{margin-left:auto;font-size:11.5px;color:var(--sub)}
-  .wallet-body{display:none;padding:8px}
-  .wallet-body.open{display:block}
-  .chipbar{display:flex;gap:6px;margin:2px 0 8px}
-  .chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:3px 10px;
-        font-size:11.5px;cursor:pointer;color:var(--sub)}
-  .chip.on{background:var(--blue);border-color:var(--blue);color:#fff}
-  .case{display:flex;gap:8px;align-items:flex-start;padding:7px 8px;border-radius:8px;
-        cursor:pointer;border:1px solid transparent}
-  .case:hover{background:#f5f8fd}
-  .case.active{background:#e8f0fe;border-color:#c6dafc}
-  .case .cid{font-family:var(--mono);font-size:12px;font-weight:600}
-  .case .meta{font-size:11px;color:var(--sub);margin-top:1px}
-  .case .right{margin-left:auto;text-align:right}
-  .badge{display:inline-block;font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:999px;
-         color:#fff}
-  .b-mi{background:var(--red)} .b-bd{background:var(--purple)} .b-x{background:var(--red)}
-  .b-w1{background:var(--orange)} .b-ok{background:var(--green)} .b-gray{background:#94a3b8}
-  .b-blue{background:var(--blue)}
-  /* 右侧 */
-  main{overflow:auto;padding:16px 18px 40px}
-  .empty{color:var(--sub);text-align:center;padding:80px 0;font-size:13.5px}
-  .detail-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
-  .detail-h .cid{font-family:var(--mono);font-size:20px;font-weight:700}
-  .reason{background:#fff7f6;border-left:3px solid var(--red);border-radius:6px;
-          padding:9px 12px;font-size:13px;margin:10px 0 14px;color:#5c2b28}
-  .prejudge{background:#f6f4ff;border-left:3px solid var(--purple);border-radius:6px;
-            padding:9px 12px;font-size:12.5px;margin:0 0 12px;color:#3b2f63}
-  .prejudge code{background:#e9e4ff;border-radius:4px;padding:1px 6px;font-size:12px}
-  .sec-title{font-size:12px;font-weight:700;color:var(--sub);letter-spacing:.5px;
-             text-transform:uppercase;margin:16px 0 8px}
-  /* 双请求面板 */
-  .pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-  @media(max-width:1180px){.pair{grid-template-columns:1fr}}
-  .req{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;
-       display:flex;flex-direction:column}
-  .req-h{display:flex;align-items:center;gap:8px;padding:10px 13px;border-bottom:1px solid var(--line);
-         background:#fbfcfe}
-  .req-h .t{font-weight:700;font-size:13.5px}
-  .req-h .sub{font-size:11.5px;color:var(--sub)}
-  .req-b{padding:12px 13px;display:flex;flex-direction:column;gap:10px}
-  .json{background:#0f172a;color:#cbd5e1;border-radius:9px;padding:11px 12px;margin:0;
-        font-family:var(--mono);font-size:11.5px;line-height:1.55;max-height:230px;
-        overflow:auto;white-space:pre}
-  .json .k{color:#7dd3fc} .json .s{color:#86efac} .json .n{color:#fca5a5}
-  .shots{display:flex;gap:7px;overflow-x:auto;padding-bottom:2px}
-  .shots a{position:relative;flex:0 0 auto}
-  .shots img{width:78px;height:auto;border:1px solid var(--line);border-radius:7px;display:block}
-  .shots a:hover img{border-color:var(--blue)}
-  .shots span{position:absolute;left:3px;bottom:3px;background:rgba(15,23,42,.72);color:#fff;
-              font-size:9.5px;padding:0 4px;border-radius:4px}
-  .decl{background:#f2f7ff;border-left:3px solid var(--blue);border-radius:6px;
-        padding:8px 11px;font-size:12.5px;color:#22354d}
-  .act{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-  button{border:1px solid var(--line);background:#fff;border-radius:9px;padding:7px 14px;
-         font-size:13px;cursor:pointer;color:var(--ink);font-weight:600}
-  button:hover:not(:disabled){background:#f4f7fc;border-color:#c9d4e3}
-  button:disabled{opacity:.45;cursor:not-allowed}
-  .btn-primary{background:var(--blue);border-color:var(--blue);color:#fff}
-  .btn-primary:hover:not(:disabled){background:#1765cc;border-color:#1765cc}
-  .btn-go{background:var(--green);border-color:var(--green);color:#fff}
-  .btn-go:hover:not(:disabled){background:#128a3f;border-color:#128a3f}
-  .btn-ghost{background:#fff}
-  .st{font-size:12px;color:var(--sub);display:flex;align-items:center;gap:6px}
-  .st b{color:var(--ink)}
-  .st.ok b{color:var(--green)} .st.err b{color:var(--red)} .st.wait b{color:var(--orange)}
-  .tx{font-family:var(--mono);font-size:11.5px;word-break:break-all;color:var(--blue)}
-  /* 结果表 */
-  .result{background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px;margin-top:14px}
-  table{width:100%;border-collapse:collapse;font-size:12.5px}
-  th,td{text-align:left;padding:7px 9px;border-bottom:1px solid #eef2f7}
-  th{font-size:11.5px;color:var(--sub);font-weight:700;background:#fbfcfe}
-  tr:last-child td{border-bottom:none}
-  /* 判定四格 */
-  .judge{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
-  @media(max-width:1100px){.judge{grid-template-columns:1fr 1fr}}
-  .jbox{background:#fff;border:1px solid var(--line);border-radius:10px;padding:11px}
-  .jbox .jt{font-size:11px;font-weight:700;color:var(--sub);margin-bottom:6px}
-  .jbox .jv{font-size:12.5px;font-weight:600}
-  .jbox .jd{font-size:11.5px;color:var(--sub);margin-top:4px}
-  .verdict{margin-top:12px;border-radius:10px;padding:12px 14px;font-size:13.5px;font-weight:600}
-  .v-hit{background:#fff1f0;border:1px solid #f5c2c0;color:#a01d16}
-  .v-miss{background:#f2fbf5;border:1px solid #bfe6cd;color:#0f6b33}
-  /* 日志 */
-  .log{margin-top:16px;background:#0f172a;color:#94a3b8;border-radius:10px;padding:10px 12px;
-       font-family:var(--mono);font-size:11.5px;max-height:150px;overflow:auto;white-space:pre-wrap}
-  .log .t{color:#64748b}
-  .log .ok{color:#4ade80} .log .er{color:#f87171} .log .in{color:#60a5fa}
-  /* mock 横幅 */
-  .mockbar{background:#fffbeb;border-bottom:1px solid #fde68a;color:#92400e;font-size:12px;
-           padding:6px 18px}
+  .app{display:grid;grid-template-columns:272px minmax(0,1fr);align-items:start}
+  aside{position:sticky;top:90px;max-height:calc(100vh - 106px);overflow:auto;
+        padding:14px 12px 20px;border-right:1px solid var(--line);background:var(--surface-2)}
+  .side-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+              color:#a3abb8;margin:2px 8px 9px}
+  .side-note{margin:20px 8px 0;font-size:11px;line-height:1.75;color:#a3abb8}
+
+  .wal{margin-bottom:3px}
+  .wal-row{width:100%;display:flex;align-items:center;gap:9px;height:34px;padding:0 9px;
+           border:0;background:transparent;cursor:pointer;font:inherit;color:var(--ink);
+           text-align:left;border-radius:8px}
+  .wal-row:hover{background:#f0f2f6}
+  .wal-row.active{background:#fff;box-shadow:var(--shadow)}
+  .wal-dot{width:7px;height:7px;border-radius:50%;background:#ccd2dc;flex:0 0 auto}
+  .wal-dot.ok{background:var(--ok)}
+  .wal-name{font-size:13.5px;font-weight:600}
+  .wal-count{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:#a3abb8}
+  .wal-body{display:none;padding:6px 0 8px}
+  .wal-body.open{display:block}
+  .wal-empty{font-size:11.5px;color:#a3abb8;padding:6px 10px}
+
+  .seg{display:flex;gap:4px;padding:0 5px 7px}
+  .seg button{flex:1;height:25px;border:1px solid var(--line);background:#fff;border-radius:6px;
+              font:inherit;font-size:11px;color:var(--ink-3);cursor:pointer;transition:.12s}
+  .seg button:hover{border-color:#cfd5df}
+  .seg button.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+
+  .case-item{display:flex;gap:8px;padding:7px 9px;border-radius:8px;cursor:pointer;align-items:flex-start}
+  .case-item:hover{background:#f0f2f6}
+  .case-item.active{background:var(--accent-soft)}
+  .ci-id{font-family:var(--mono);font-size:12px;font-weight:600;line-height:1.35}
+  .case-item.active .ci-id{color:var(--accent)}
+  .ci-m{font-size:10.5px;color:var(--ink-3);margin-top:1px}
+  .ci-mark{margin-left:auto;font-size:11px;color:var(--ok);font-weight:700}
+
+  main{padding:20px 24px 70px;min-width:0}
+  .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;
+         min-height:52vh;gap:9px;color:var(--ink-2);font-size:13px}
+  .em-mark{width:38px;height:38px;border-radius:11px;background:#eceef3;display:grid;place-items:center;
+           font-size:17px;color:#b6bdc9;margin-bottom:2px}
+
+  /* ---------- 用例头 ---------- */
+  .case-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 14px}
+  .case-id{font-family:var(--mono);font-size:21px;font-weight:650;letter-spacing:-.01em;line-height:1.2}
+  .case-meta{font-size:12.5px;color:var(--ink-3)}
+  .case-meta code{font-size:11.5px;color:var(--ink-2);background:#f1f3f7;padding:1.5px 6px;border-radius:5px}
+  .case-tags{margin-left:auto;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  .tag{font-size:11.5px;color:var(--ink-3);display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+  .tag i{width:6px;height:6px;border-radius:50%;background:#ccd2dc;display:inline-block}
+  .tag.warn{color:var(--warn)} .tag.warn i{background:var(--warn)}
+  .tag.err{color:var(--err)}   .tag.err i{background:var(--err)}
+  .tag.acc{color:var(--accent)} .tag.acc i{background:var(--accent)}
+  .tag.ok{color:var(--ok)}     .tag.ok i{background:var(--ok)}
+
+  .note{margin-top:12px;padding:11px 14px;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+  .note-k{font-size:9.5px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:#a3abb8;margin-bottom:5px}
+  .note-v{font-size:12.5px;color:var(--ink-2)}
+  .note.acc{border-left:2px solid var(--accent);border-radius:3px 10px 10px 3px}
+
+  .sec{display:flex;align-items:baseline;gap:10px;margin:26px 0 10px}
+  .sec h2{margin:0;font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#a3abb8}
+  .sec .hint{font-size:11px;color:#b6bdc9}
+
+  /* ---------- 双请求面板 ---------- */
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+         box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden}
+  .panel-head{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line-2)}
+  .panel-title{font-size:13px;font-weight:650;line-height:1.3}
+  .panel-sub{font-size:10.5px;color:#a3abb8;margin-top:1px}
+  .chip{margin-left:auto;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.05em;
+        color:var(--accent);background:var(--accent-soft);padding:2.5px 7px;border-radius:5px}
+  .chip.rm{color:#b4520c;background:#fff4e8}
+  .panel-body{padding:12px 14px 14px;display:flex;flex-direction:column;gap:11px}
+
+  .shots{display:flex;gap:7px;overflow-x:auto;padding-bottom:1px}
+  .shots a{position:relative;flex:0 0 auto;border-radius:8px;overflow:hidden;line-height:0;
+           outline:1px solid var(--line);transition:.15s}
+  .shots a:hover{outline-color:var(--accent);outline-offset:1px}
+  .shots img{width:74px;display:block}
+  .shots span{position:absolute;left:4px;bottom:4px;background:rgba(14,17,23,.66);color:#fff;
+              font-size:8.5px;line-height:1.6;padding:0 4px;border-radius:3px}
+
+  .code{margin:0;background:#0e1117;color:#c3cbd8;border-radius:9px;padding:12px 13px;
+        font-family:var(--mono);font-size:11px;line-height:1.62;max-height:208px;overflow:auto;
+        white-space:pre;tab-size:2}
+  .code .k{color:#8fb8f0} .code .s{color:#8fce9b} .code .n{color:#e8a87c}
+
+  .field{display:flex;flex-direction:column;gap:3px}
+  .field-k{font-size:9.5px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:#a3abb8}
+  .field-v{font-size:12.5px;color:var(--ink-2);line-height:1.6}
+  .field-v.warn{color:var(--warn)}
+
+  .actions{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:1px}
+  .btn{height:32px;padding:0 13px;border-radius:8px;border:1px solid var(--line);background:#fff;
+       font:inherit;font-size:12.5px;font-weight:600;color:var(--ink-2);cursor:pointer;transition:.13s}
+  .btn:hover:not(:disabled){background:var(--surface-2);border-color:#d3d9e2;color:var(--ink)}
+  .btn:disabled{opacity:.42;cursor:not-allowed}
+  .btn-primary{background:var(--accent);border-color:var(--accent);color:#fff;
+               box-shadow:0 1px 2px rgba(79,70,229,.26)}
+  .btn-primary:hover:not(:disabled){background:#4338ca;border-color:#4338ca;color:#fff}
+  .btn-go{background:var(--ok);border-color:var(--ok);color:#fff;box-shadow:0 1px 2px rgba(15,157,110,.26)}
+  .btn-go:hover:not(:disabled){background:#0b855c;border-color:#0b855c;color:#fff}
+
+  .pst{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--ink-3);line-height:1.5}
+  .pst b{font-weight:600}
+  .pst.ok,.pst.ok b{color:var(--ok)}
+  .pst.wait,.pst.wait b{color:var(--warn)}
+  .pst.err,.pst.err b{color:var(--err)}
+  .tx{font-family:var(--mono);font-size:10.5px;color:var(--accent);word-break:break-all}
+
+  /* ---------- 结果表 / 判定 ---------- */
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+        box-shadow:var(--shadow);padding:14px 16px}
+  .tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+  .tbl th{text-align:left;font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+          color:#a3abb8;padding:0 10px 9px;white-space:nowrap}
+  .tbl th:first-child,.tbl td:first-child{padding-left:0}
+  .tbl td{padding:10px;border-top:1px solid var(--line-2);vertical-align:top;color:var(--ink-2)}
+  .tbl td:first-child{color:var(--ink);font-weight:500;white-space:nowrap}
+
+  .judge{display:grid;grid-template-columns:repeat(4,1fr);background:var(--surface);
+         border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+  .jbox{padding:13px 15px;border-left:1px solid var(--line-2);min-width:0}
+  .jbox:first-child{border-left:0}
+  .jt{font-size:9.5px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:#a3abb8;margin-bottom:6px}
+  .jv{font-size:12.5px;font-weight:600;color:var(--ink);line-height:1.4}
+  .jd{font-size:11px;color:var(--ink-3);margin-top:4px;line-height:1.55}
+
+  .verdict{margin-top:13px;display:flex;gap:10px;padding:12px 15px;border-radius:10px;
+           font-size:12.5px;border:1px solid;line-height:1.6;align-items:flex-start}
+  .verdict.hit{background:#fff6f5;border-color:#f6d8d5;color:#8d1f1a}
+  .verdict .vi{font-weight:700;white-space:nowrap}
+  .verdict code{font-size:11px;background:rgba(0,0,0,.05);padding:1px 5px;border-radius:4px}
+
+  .logbar{margin-top:20px;background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .logbar summary{padding:10px 14px;font-size:11px;font-weight:600;letter-spacing:.06em;
+                  text-transform:uppercase;color:#a3abb8;cursor:pointer;user-select:none;list-style:none}
+  .logbar summary::-webkit-details-marker{display:none}
+  .logbar summary::after{content:"+";float:right;font-size:13px;line-height:1}
+  .logbar[open] summary::after{content:"–"}
+  .log{background:#0e1117;color:#8b95a3;padding:11px 14px;font-family:var(--mono);font-size:11px;
+       line-height:1.7;max-height:150px;overflow:auto;white-space:pre-wrap}
+  .log .t{color:#596373} .log .ok{color:#4ade80} .log .er{color:#f87171}
+  .log .in{color:#7dd3fc} .log .warn{color:#fbbf24}
+
+  /* ---------- 响应式 ---------- */
+  @media(max-width:1000px){
+    html,body{overflow-x:hidden}
+    .topbar{height:auto;padding:9px 14px;gap:10px;flex-wrap:wrap}
+    .topbar-right{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch}
+    .pill{flex:0 0 auto}
+    .card{overflow-x:auto}
+    .tbl{min-width:520px}
+    .brand-sub{display:none}
+    .topbar-right{width:100%;margin-left:0;overflow-x:auto;padding-bottom:1px}
+    .subbar{height:auto;padding:6px 14px;white-space:normal}
+    .app{grid-template-columns:minmax(0,1fr)}
+    aside{position:static;max-height:none;border-right:0;border-bottom:1px solid var(--line);
+          padding:10px 12px 12px}
+    .wal-body.open{max-height:34vh;overflow:auto}
+    main{padding:16px 14px 70px}
+    .cols{grid-template-columns:minmax(0,1fr)}
+    .judge{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .jbox:nth-child(odd){border-left:0}
+    .jbox:nth-child(n+3){border-top:1px solid var(--line-2)}
+    .case-id{font-size:19px}
+    .subbar{height:auto;white-space:normal;line-height:1.55;flex-wrap:wrap;row-gap:2px}
+    .subbar span:nth-child(2){display:none}
+    .case-tags{margin-left:0;gap:10px}
+    .tbl th:nth-child(2),.tbl td:nth-child(2){display:none}
+  }
 </style>
 </head>
 <body>
-
-<div class="mockbar">
-  <b>页面设计原型</b>　·　数据：<b id="dataStat">加载中…</b>　·　「发送」已接 <code>window.ethereum.request</code>；无钱包时回退 MOCK
-</div>
-
-<header>
-  <h1>上链测试 · On-chain Verification</h1>
-  <span class="env">把判为 X 的 Rp / Rm 真正发一遍，用链上结果反证 UI 是否欺诈</span>
-
-  <div class="statusbar">
-    <span class="pill" id="wsPill" title="点这里重新连接"><span class="dot" id="wsDot"></span>
-      WS <b id="wsAddr">未连接</b></span>
-    <span class="pill">钱包 <b id="acct">0xAbC1…9f02</b></span>
-    <span class="pill">链 <b id="chain">1 · Ethereum</b></span>
-    <span class="pill" id="modePill">模式 <b id="modeTxt">dry_run</b></span>
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark">◈</div>
+    <div>
+      <div class="brand-title">上链测试</div>
+      <div class="brand-sub">On-chain Verification</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span class="pill"><i class="dot" id="wsDot"></i><span id="wsAddr">未连接</span></span>
+    <span class="pill">链 <b>Ethereum</b></span>
     <span class="pill" id="walletPill">钱包 <b id="walletTxt">检测中</b></span>
-    <button class="btn-ghost" id="btnReconnect">重连</button>
+    <span class="pill" id="modePill">模式 <b id="modeTxt">dry_run</b></span>
+    <button class="btn" id="btnReconnect">重连</button>
   </div>
 </header>
 
-<div class="layout">
+<div class="subbar">
+  <span id="dataStat">加载中…</span>
+  <span>·</span>
+  <span>判为 X 的 Rp / Rm 重新发送，用链上结果反证 UI</span>
+</div>
 
-  <!-- ============ 左栏：钱包分组 + 用例 ============ -->
+<div class="app">
   <aside>
-    <div class="side-h">按钱包分组</div>
+    <div class="side-label">钱包</div>
     <div id="walletList"></div>
-
-    <div class="side-h" style="margin-top:16px">说明</div>
-    <div style="font-size:11.5px;color:#7c8794;line-height:1.6;padding:0 4px">
-      · 数据源：<code>ui_grade/&lt;wallet&gt;_x/verdicts.jsonl</code><br>
-      · 默认只显示 <b>变异引入</b>（真攻击向量）<br>
-      · 每条包含父 seed(Rp) 与变异 seed(Rm)<br>
-      · 发送走 WS 接口，不经 Appium 点 UI<br>
-      · 钱包弹窗仍需人工/Appium 确认
+    <div class="side-note">
+      数据来自 ui_grade 的 X 判定<br>
+      发送走 WS 接口，不经 Appium<br>
+      钱包弹窗仍需人工确认
     </div>
   </aside>
-
-  <!-- ============ 右栏：详情 ============ -->
   <main id="main">
-    <div class="empty" id="emptyTip">← 从左侧选择一个钱包和用例</div>
+    <div class="empty" id="emptyTip">
+      <div class="em-mark">◫</div>
+      <div>从左侧选择一个钱包和用例</div>
+      <div style="font-size:11.5px;color:#b6bdc9">选中后可分别发送 Rp / Rm，两笔都上链后点「确认上链测试」</div>
+    </div>
     <div id="detail" style="display:none"></div>
   </main>
 </div>
@@ -379,6 +467,7 @@ const WS = {
       this.status("on", url.replace(/^wss?:\/\//, "").split("/")[0]);
       this.send({type: "onchain_ready", account: ACCOUNT, chainId: 1});
       log("ok", "WS 已连接 " + url);
+      try { localStorage.setItem("onchain_ws_url", url); } catch (e) {}
     };
     this.sock.onclose = () => {
       this.ready = false;
@@ -484,7 +573,7 @@ function renderMode(){
     mp.className = "pill" + (SEND_MODE === "live" ? " mode-live" : "");
   }
   const wt = document.getElementById("walletTxt");
-  if (wt) wt.textContent = HAS_WALLET ? "window.ethereum ✓" : "无（预览）";
+  if (wt) wt.textContent = HAS_WALLET ? "已注入" : "无（预览）";
 }
 
 /* =====================================================================
@@ -499,14 +588,13 @@ function renderWallets(){
   box.innerHTML = "";
   DATA.wallets.forEach(w => {
     const wrap = document.createElement("div");
-    wrap.className = "wallet";
+    wrap.className = "wal";
 
-    const h = document.createElement("div");
-    h.className = "wallet-h" + (state.wallet === w.key ? " active" : "");
-    h.innerHTML = `
-      <span class="dot ${w.status==='done'?'on':''}"></span>
-      <span class="nm">${w.name}</span>
-      <span class="cnt">${w.total} 条 X</span>`;
+    const h = document.createElement("button");
+    h.className = "wal-row" + (state.wallet === w.key ? " active" : "");
+    h.innerHTML = `<span class="wal-dot ${w.status === 'done' ? 'ok' : ''}"></span>
+      <span class="wal-name">${w.name}</span>
+      <span class="wal-count">${w.total ? w.total : "—"}</span>`;
     h.onclick = () => {
       state.wallet = (state.wallet === w.key) ? null : w.key;
       state.caseId = null;
@@ -515,47 +603,39 @@ function renderWallets(){
     wrap.appendChild(h);
 
     const body = document.createElement("div");
-    body.className = "wallet-body" + (state.wallet === w.key ? " open" : "");
-
+    body.className = "wal-body" + (state.wallet === w.key ? " open" : "");
     if (w.status !== "done"){
-      body.innerHTML = `<div style="font-size:12px;color:#94a3b8;padding:8px 4px">
-        尚未判定（先跑 capture + ui_grade）</div>`;
+      body.innerHTML = `<div class="wal-empty">尚未判定</div>`;
       wrap.appendChild(body); box.appendChild(wrap); return;
     }
 
-    // 筛选条
-    const bar = document.createElement("div");
-    bar.className = "chipbar";
-    bar.innerHTML = `
-      <span class="chip ${state.filter==='mutation'?'on':''}" data-f="mutation">变异引入 ${w.mutation}</span>
-      <span class="chip ${state.filter==='all'?'on':''}" data-f="all">全部 ${w.total}</span>`;
-    bar.querySelectorAll(".chip").forEach(c => c.onclick = () => {
-      state.filter = c.dataset.f; renderWallets();
+    const seg = document.createElement("div");
+    seg.className = "seg";
+    seg.innerHTML = `
+      <button class="${state.filter === 'mutation' ? 'on' : ''}" data-f="mutation">变异引入 ${w.mutation}</button>
+      <button class="${state.filter === 'all' ? 'on' : ''}" data-f="all">全部 ${w.total}</button>`;
+    seg.querySelectorAll("button").forEach(b => {
+      b.onclick = () => { state.filter = b.dataset.f; renderWallets(); };
     });
-    body.appendChild(bar);
+    body.appendChild(seg);
 
-    // 用例列表
     const shown = state.filter === "all"
       ? w.cases
       : w.cases.filter(c => c.attribution === "mutation_induced");
     if (!shown.length){
-      body.insertAdjacentHTML("beforeend",
-        `<div style="font-size:12px;color:#94a3b8;padding:6px 4px">该筛选下没有用例</div>`);
+      body.insertAdjacentHTML("beforeend", `<div class="wal-empty">该筛选下没有用例</div>`);
     }
     shown.forEach(c => {
-      const el = document.createElement("div");
       const r = caseResult(c.case_id);
-      const st = r.verified ? "✅" : (r.rp && r.rm ? "◐" : "○");
-      el.className = "case" + (state.caseId === c.case_id ? " active" : "");
+      const el = document.createElement("div");
+      el.className = "case-item" + (state.caseId === c.case_id ? " active" : "");
       el.innerHTML = `
         <div>
-          <div class="cid">${st} ${c.case_id}</div>
-          <div class="meta">${c.method} · 手段 ${c.technique_id} ${c.technique}</div>
+          <div class="ci-id">${c.case_id}</div>
+          <div class="ci-m">${(c.technique || String(c.method || "").replace("eth_", "")).slice(0, 13)}${
+            c.attribution === "mutation_induced" ? "" : " · 固有"}</div>
         </div>
-        <div class="right">
-          <span class="badge ${c.attribution==='mutation_induced'?'b-mi':'b-bd'}">
-            ${c.attribution==='mutation_induced'?'变异引入':'基线固有'}</span>
-        </div>`;
+        <div class="ci-mark">${r.verified ? "✓" : ""}</div>`;
       el.onclick = () => { state.caseId = c.case_id; renderWallets(); renderDetail(); };
       body.appendChild(el);
     });
@@ -565,9 +645,6 @@ function renderWallets(){
   });
 }
 
-/* =====================================================================
- *  4. 详情渲染
- * ===================================================================*/
 function findCase(){
   const w = DATA.wallets.find(x => x.key === state.wallet);
   return w && w.cases.find(c => c.case_id === state.caseId);
@@ -582,33 +659,28 @@ function jsonHTML(obj){
   return s;
 }
 
-function statusHTML(r, label){
-  if (!r) return `<span class="st"><span class="dot"></span>未发送</span>`;
-  if (r.state === "waiting") return `<span class="st wait"><span class="dot warn"></span>等待钱包确认…</span>`;
+function statusHTML(r){
+  if (!r) return `<span class="pst"><i class="dot"></i>未发送</span>`;
+  if (r.state === "waiting")
+    return `<span class="pst wait"><i class="dot warn"></i>等待钱包确认…</span>`;
   if (r.state === "ok"){
     if (r.kind === "skip")
-      return `<span class="st wait"><span class="dot warn"></span>
-        跳过 · ${r.effect || ""}</span>`;
+      return `<span class="pst wait"><i class="dot warn"></i>跳过 · ${r.effect || ""}</span>`;
     if (r.kind === "estimate")
-      return `<span class="st ok"><span class="dot on"></span>
-        dry_run 通过 · <span class="tx">${r.tx}</span></span>`;
+      return `<span class="pst ok"><i class="dot on"></i>dry_run 通过 · <span class="tx">${r.tx}</span></span>`;
     if (r.kind === "signature")
-      return `<span class="st ok"><span class="dot on"></span>
-        已签名（未广播）· <span class="tx">${String(r.signature || "").slice(0, 18)}…</span></span>`;
+      return `<span class="pst ok"><i class="dot on"></i>已签名（未广播）</span>`;
     if (r.kind === "mock")
-      return `<span class="st wait"><span class="dot warn"></span>
-        MOCK · <span class="tx">${r.tx}</span></span>`;
-    return `<span class="st ok"><span class="dot on"></span>
-      已广播 · tx <span class="tx">${r.tx}</span></span>`;
+      return `<span class="pst wait"><i class="dot warn"></i>MOCK · ${r.tx}</span>`;
+    return `<span class="pst ok"><i class="dot on"></i>已广播 · <span class="tx">${r.tx}</span></span>`;
   }
-  if (r.state === "rejected") return `<span class="st err"><span class="dot"></span>
-    <b>用户拒绝</b> · code ${r.code}</span>`;
-  return `<span class="st err"><span class="dot"></span><b>失败</b> · ${r.msg}</span>`;
+  if (r.state === "rejected")
+    return `<span class="pst err"><i class="dot"></i><b>用户拒绝</b> · code ${r.code}</span>`;
+  return `<span class="pst err"><i class="dot"></i><b>失败</b> · ${r.msg || ""}</span>`;
 }
 
 function renderDetail(){
   const c = findCase();
-  const main = document.getElementById("main");
   if (!c){
     document.getElementById("emptyTip").style.display = "";
     document.getElementById("detail").style.display = "none";
@@ -618,63 +690,63 @@ function renderDetail(){
   const d = document.getElementById("detail");
   d.style.display = "";
   const r = caseResult(c.case_id);
+  const isMut = c.attribution === "mutation_induced";
+  const ready = r.rp && r.rp.state === "ok" && r.rm && r.rm.state === "ok";
+  const pj = c.prejudge;
 
   d.innerHTML = `
-    <div class="detail-h">
-      <span class="cid">${c.case_id}</span>
-      <span class="badge b-blue">${c.method}</span>
-      <span class="badge b-gray">手段 ${c.technique_id} · ${c.technique}</span>
-      <span class="badge b-w1">基线 ${c.base_verdict}</span>
-      <span class="badge b-x">变异 X</span>
-      <span class="badge ${c.attribution==='mutation_induced'?'b-mi':'b-bd'}">
-        ${c.attribution==='mutation_induced'?'变异引入':'基线固有'}</span>
-      ${c.prejudge ? `<span class="badge ${c.prejudge.verdict==='onchain_confirmed'?'b-x':'b-ok'}"
-        title="规则引擎预判（未上链）">规则预判 · ${
-          c.prejudge.verdict==='onchain_confirmed' ? '欺诈成立'
-          : c.prejudge.verdict==='ui_faithful' ? 'UI 已披露' : '未执行'
-        }${c.prejudge.missing_items.length?`（漏 ${c.prejudge.missing_items.join('、')}）`:''}</span>` : ''}
-    </div>
-    <div class="reason">${c.reason}</div>
-    ${c.prejudge ? `<div class="prejudge">
-      <b>规则引擎预判</b>（未上链，基于「链上按真值执行」的假设）：
-      <code>${c.prejudge.verdict}</code>　置信度 <b>${c.prejudge.confidence||'—'}</b>
-      ${c.prejudge.missing_items.length
-        ? `　漏披露：<b>${c.prejudge.missing_items.join('、')}</b>` : ''}
-      <div style="margin-top:4px;color:#6b7684">${c.prejudge.note||''}</div>
-    </div>` : ''}
-
-    <div class="sec-title">请求内容（父 seed / 变异 seed）</div>
-    <div class="pair">
-      ${reqCard("rp", "父 seed · Rp", "原始请求（对照基准）", c.rp, c.decl_rp, c.ui_rp, r.rp, (c.shots||{}).baseline)}
-      ${reqCard("rm", "变异 seed · Rm", "实际提交给钱包的请求", c.rm, c.decl_rm, c.ui_rm, r.rm, (c.shots||{}).mutant)}
-    </div>
-
-    <div class="sec-title">上链结果</div>
-    <div class="result">
-      <table>
-        <thead><tr><th>步骤</th><th>方法</th><th>状态</th><th>tx hash</th><th>链上效果</th></tr></thead>
-        <tbody id="resBody">${resRows(c, r)}</tbody>
-      </table>
-      <details id="preparedBox" style="margin-top:10px;display:none">
-        <summary style="cursor:pointer;font-size:12px;color:#1a73e8;font-weight:600">
-          查看实际发送参数（已替换占位符 / 刷新 nonce）</summary>
-        <pre class="json" id="preparedJson" style="max-height:200px;margin-top:8px"></pre>
-      </details>
-      <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-        <button class="btn-go" id="btnVerify"
-          ${(!(r.rp && r.rp.state==='ok' && r.rm && r.rm.state==='ok') || r.verified) ? "disabled" : ""}>
-          确认上链测试</button>
-        <span style="font-size:12px;color:#6b7684">
-          需 Rp 与 Rm 两笔都已确认上链后才能判定</span>
-        ${r.verified ? '<span class="badge b-ok">已判定</span>' : ""}
+    <div class="case-head">
+      <div class="case-id">${c.case_id}</div>
+      <div class="case-meta"><code>${c.method}</code>· 手段 ${c.technique_id} ${c.technique || ""}</div>
+      <div class="case-tags">
+        <span class="tag warn"><i></i>基线 ${c.base_verdict || "—"}</span>
+        <span class="tag err"><i></i>变异 X</span>
+        <span class="tag ${isMut ? 'acc' : ''}"><i></i>${isMut ? "变异引入" : "基线固有"}</span>
+        ${pj ? `<span class="tag ${pj.verdict === 'onchain_confirmed' ? 'err' : 'ok'}"><i></i>规则预判 ${
+          pj.verdict === "onchain_confirmed" ? "欺诈成立" : pj.verdict === "ui_faithful" ? "UI 已披露" : "未执行"}</span>` : ""}
       </div>
     </div>
 
-    <div class="sec-title">上链判定（UI 声明 ↔ 请求真值 ↔ 链上效果）</div>
+    <div class="note">
+      <div class="note-k">判定理由</div>
+      <div class="note-v">${c.reason}</div>
+    </div>
+
+    ${pj ? `<div class="note acc" style="margin-top:8px">
+      <div class="note-k">规则引擎预判（未上链）</div>
+      <div class="note-v"><code>${pj.verdict}</code>　置信度 ${pj.confidence || "—"}${
+        (pj.missing_items || []).length ? `　漏披露 <b>${pj.missing_items.join("、")}</b>` : ""}
+        <div style="color:var(--ink-3);margin-top:3px">${pj.note || ""}</div></div>
+    </div>` : ""}
+
+    <div class="sec"><h2>请求内容</h2><span class="hint">父 seed 与变异 seed 逐字段对照</span></div>
+    <div class="cols">
+      ${reqCard("rp", "父 seed", "Rp · 原始请求", c.rp, c.decl_rp, c.ui_rp, r.rp, (c.shots || {}).baseline)}
+      ${reqCard("rm", "变异 seed", "Rm · 提交给钱包的请求", c.rm, c.decl_rm, c.ui_rm, r.rm, (c.shots || {}).mutant)}
+    </div>
+
+    <div class="sec"><h2>上链结果</h2></div>
+    <div class="card">
+      <table class="tbl">
+        <thead><tr><th>步骤</th><th>方法</th><th>状态</th><th>交易哈希</th><th>链上效果</th></tr></thead>
+        <tbody id="resBody">${resRows(c, r)}</tbody>
+      </table>
+      <details id="preparedBox" style="display:none;margin-top:13px">
+        <summary style="cursor:pointer;font-size:11.5px;color:var(--accent);font-weight:600">
+          实际发送参数（已替换占位符 / 刷新 nonce）</summary>
+        <pre class="code" id="preparedJson" style="margin-top:8px;max-height:190px"></pre>
+      </details>
+      <div class="actions" style="margin-top:14px">
+        <button class="btn btn-go" id="btnVerify" ${(!ready || r.verified) ? "disabled" : ""}>确认上链测试</button>
+        <span style="font-size:11.5px;color:var(--ink-3)">Rp 与 Rm 都确认上链后才能判定</span>
+        ${r.verified ? '<span class="tag ok"><i></i>已判定</span>' : ""}
+      </div>
+    </div>
+
+    <div class="sec"><h2>上链判定</h2><span class="hint">UI 声明 · 请求真值 · 链上效果</span></div>
     ${judgeBlock(c, r)}
 
-    <div class="sec-title">WS 日志</div>
-    <div class="log" id="log"></div>
+    <details class="logbar"><summary>运行日志</summary><div class="log" id="log"></div></details>
   `;
 
   bindReqButtons(c, r);
@@ -685,51 +757,55 @@ function renderDetail(){
 
 function reqCard(key, title, sub, req, decl, ui, res, shots){
   const shotHTML = (shots && shots.length)
-    ? `<div class="shots">${shots.map((s,i) =>
-        `<a href="${s}" target="_blank" title="点开原图"><img src="${s}" loading="lazy"
-           onerror="this.parentNode.style.display='none'">
-           <span>L${i}</span></a>`).join("")}</div>`
+    ? `<div class="shots">${shots.map((s, i) =>
+        `<a href="${s}" target="_blank" title="打开原图"><img src="${s}" loading="lazy"
+           onerror="this.parentNode.style.display='none'"><span>L${i}</span></a>`).join("")}</div>`
+    : "";
+  const ph = hasPlaceholder(req)
+    ? `<div class="field"><div class="field-v warn">含占位符 {{address}}，发送时自动替换为当前账户</div></div>`
     : "";
   return `
-  <div class="req">
-    <div class="req-h">
-      <span class="t">${title}</span><span class="sub">${sub}</span>
-      <span style="margin-left:auto">${key==='rp'
-        ? '<span class="badge b-gray">Rp</span>'
-        : '<span class="badge b-blue">Rm</span>'}</span>
+  <section class="panel">
+    <div class="panel-head">
+      <div>
+        <div class="panel-title">${title}</div>
+        <div class="panel-sub">${sub}</div>
+      </div>
+      <span class="chip ${key === 'rm' ? 'rm' : ''}">${key === 'rp' ? 'Rp' : 'Rm'}</span>
     </div>
-    <div class="req-b">
+    <div class="panel-body">
       ${shotHTML}
-      <pre class="json">${jsonHTML(req)}</pre>
-      <div class="decl"><b>语义意图：</b>${decl}</div>
-      <div class="decl" style="border-color:#ea8600;background:#fffaf0">
-        <b>钱包界面当时展示：</b>${ui}</div>
-      ${hasPlaceholder(req) ? `<div class="decl" style="border-color:#c084fc;background:#faf5ff">
-        ⚠ 该请求含占位符 <code>{{address}}</code>，发送时会自动替换为当前钱包账户</div>` : ""}
-      <div class="act">
-        <button class="btn-primary" data-send="${key}">发送 ${key==='rp'?'Rp':'Rm'}</button>
-        <button class="btn-ghost" data-copy="${key}">复制 JSON</button>
-        <button class="btn-ghost" data-shot="${key}">查看截图</button>
+      <pre class="code">${jsonHTML(req)}</pre>
+      <div class="field"><div class="field-k">语义意图</div><div class="field-v">${decl}</div></div>
+      <div class="field"><div class="field-k">界面当时展示</div><div class="field-v">${ui}</div></div>
+      ${ph}
+      <div class="actions">
+        <button class="btn btn-primary" data-send="${key}">发送 ${key === 'rp' ? 'Rp' : 'Rm'}</button>
+        <button class="btn" data-copy="${key}">复制</button>
+        <button class="btn" data-shot="${key}">截图</button>
       </div>
       <div id="st-${key}">${statusHTML(res)}</div>
     </div>
-  </div>`;
+  </section>`;
 }
 
 function resRows(c, r){
   const row = (label, res) => {
-    const st = !res ? '<span class="badge b-gray">未发送</span>'
-      : res.state === "ok" && res.kind === "tx" ? '<span class="badge b-ok">已广播</span>'
-      : res.state === "ok" && res.kind === "estimate" ? '<span class="badge b-blue">估算通过</span>'
-      : res.state === "ok" && res.kind === "signature" ? '<span class="badge b-purple">已签名</span>'
-      : res.state === "ok" ? '<span class="badge b-w1">MOCK</span>'
-      : res.state === "waiting" ? '<span class="badge b-w1">确认中</span>'
-      : '<span class="badge b-x">失败</span>';
+    let st = `<span class="tag"><i></i>未发送</span>`;
+    if (res){
+      if (res.state === "ok" && res.kind === "tx") st = `<span class="tag ok"><i></i>已广播</span>`;
+      else if (res.state === "ok" && res.kind === "estimate") st = `<span class="tag acc"><i></i>估算通过</span>`;
+      else if (res.state === "ok" && res.kind === "signature") st = `<span class="tag acc"><i></i>已签名</span>`;
+      else if (res.state === "ok") st = `<span class="tag warn"><i></i>MOCK</span>`;
+      else if (res.state === "waiting") st = `<span class="tag warn"><i></i>确认中</span>`;
+      else st = `<span class="tag err"><i></i>失败</span>`;
+    }
     return `<tr>
-      <td>${label}</td><td><code>${c.method}</code></td>
+      <td>${label}</td>
+      <td><code style="font-size:11.5px;color:var(--ink-2)">${c.method}</code></td>
       <td>${st}</td>
-      <td class="tx">${res && res.tx ? res.tx : "—"}</td>
-      <td>${res && res.effect ? res.effect : "—"}</td></tr>`;
+      <td><span class="tx" style="color:var(--ink-3)">${res && res.tx ? res.tx : "—"}</span></td>
+      <td style="color:var(--ink-3)">${res && res.effect ? res.effect : "—"}</td></tr>`;
   };
   return row("Rp 父请求", r.rp) + row("Rm 变异请求", r.rm);
 }
@@ -738,34 +814,32 @@ function judgeBlock(c, r){
   const done = r.verified;
   return `
   <div class="judge">
-    <div class="jbox"><div class="jt">① 请求真值（Rp→Rm）</div>
-      <div class="jv">${c.technique}</div>
-      <div class="jd">${c.decl_rp}</div></div>
-    <div class="jbox"><div class="jt">② 钱包 UI 声明</div>
+    <div class="jbox">
+      <div class="jt">请求真值</div>
+      <div class="jv">${c.technique || "—"}</div>
+      <div class="jd">${c.decl_rp}</div>
+    </div>
+    <div class="jbox">
+      <div class="jt">钱包 UI 声明</div>
       <div class="jv">${done ? "已比对" : "待比对"}</div>
-      <div class="jd">${c.ui_rm}</div></div>
-    <div class="jbox"><div class="jt">③ 链上实际效果</div>
+      <div class="jd">${c.ui_rm}</div>
+    </div>
+    <div class="jbox">
+      <div class="jt">链上实际效果</div>
       <div class="jv">${done ? "已采集" : "待采集"}</div>
-      <div class="jd">${done ? "Rp: 1 USDC 转出 / 授权 1 USDC<br>Rm: 授权 1,000,000 最小单位" : "发送并存证后填入"}</div></div>
-    <div class="jbox"><div class="jt">④ 判定</div>
+      <div class="jd">${done ? "Rp / Rm 的 receipt 事件已解析" : "两笔都确认后自动填入"}</div>
+    </div>
+    <div class="jbox">
+      <div class="jt">判定</div>
       <div class="jv">${done ? "语义欺诈成立" : "—"}</div>
-      <div class="jd">${done ? "UI 未披露 Rm 的真实授权额度" : "Rp/Rm 都上链后自动判定"}</div></div>
+      <div class="jd">${done ? "UI 未披露 Rm 的真实语义" : "需两笔都上链"}</div>
+    </div>
   </div>
-  ${done ? `<div class="verdict v-hit">
-      ✅ 判定：<b>语义欺诈成立（onchain_confirmed）</b> ——
-      链上确实执行了 Rm 的真实语义，而 UI 展示的是另一套语义，用户按 UI 理解签名即造成实际损失。
-    </div>` : ""}`;
+  ${done ? `<div class="verdict hit"><span class="vi">语义欺诈成立</span>
+    <span>链上确实执行了 Rm 的真实语义，而 UI 展示的是另一套语义——用户按 UI 理解签名即造成实际损失
+    <code>onchain_confirmed</code></span></div>` : ""}`;
 }
 
-/* =====================================================================
- *  5. 交互（原型：模拟发送）
- * ===================================================================*/
-const LOGS = [];
-function log(level, msg){
-  const t = new Date().toLocaleTimeString("zh-CN", {hour12:false});
-  LOGS.push({t, level, msg});
-  renderLog();
-}
 function renderLog(){
   const el = document.getElementById("log");
   if (!el) return;
@@ -978,9 +1052,9 @@ document.getElementById("btnReconnect").onclick = () => {
   // 演示态：?case=t0332&demo=done 预填「已上链 + 已判定」
   if (q.get("demo") === "done" && cid) {
     state.results[cid] = {
-      rp: { state: "ok", tx: "0x8f2c41d7a0b93e5c6d1f4a2b7e9c0d3f5a6b8c1e2d4f7a9b0c3e5d6f8a1b2c4d",
+      rp: { state: "ok", kind: "tx", tx: "0x8f2c41d7a0b93e5c6d1f4a2b7e9c0d3f5a6b8c1e2d4f7a9b0c3e5d6f8a1b2c4d",
            effect: "Approval(owner=0xAbC1…, spender=0x17ee…a702, amount=1,000,000)" },
-      rm: { state: "ok", tx: "0x3a7e9c1d5b8f2a4c6e0d7b3f9a1c5e8d2b4f6a0c7e9d1b3f5a8c2e4d6b0f9a1c",
+      rm: { state: "ok", kind: "tx", tx: "0x3a7e9c1d5b8f2a4c6e0d7b3f9a1c5e8d2b4f6a0c7e9d1b3f5a8c2e4d6b0f9a1c",
            effect: "Approval(owner=0xAbC1…, spender=0x17ee…a702, amount=1,000,000) ← 代币合约不同" },
       verified: true
     };
@@ -1012,8 +1086,11 @@ log("in", `页面加载完成 · 数据源 ${DATA.schema} · 用例 ${DATA.walle
 
 (function autoConnect(){
   const q = new URLSearchParams(location.search);
-  const url = q.get("ws") || "ws://127.0.0.1:8766";
+  let saved = null;
+  try { saved = localStorage.getItem("onchain_ws_url"); } catch (e) {}
+  const url = q.get("ws") || saved || "ws://127.0.0.1:8766";
   if (q.get("nows") === "1") { WS.status("", "未连接（nows=1）"); return; }
+  if (!q.get("ws") && saved) log("in", "使用上次保存的 WS 地址：" + saved);
   WS.connect(url);
 })();
 </script>
