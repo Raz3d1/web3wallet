@@ -623,7 +623,7 @@ async function probeChain(){
 /* chainId 可配置：?chainid=20260119（默认 1337）
    注意：1337 在很多钱包链库里对应已有链（如 zkTAO），会被钱包自己的节点顶掉，
    所以实际测试建议用一个冷门值。 */
-const FORK_CHAIN_ID = parseInt(_Q.get("chainid") || "1337", 10);
+const FORK_CHAIN_ID = parseInt(new URLSearchParams(location.search).get("chainid") || "1337", 10);
 const FORK_CHAIN_HEX = "0x" + FORK_CHAIN_ID.toString(16);
 
 function forkChainParams(){
