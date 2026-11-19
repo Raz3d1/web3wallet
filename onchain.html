@@ -911,6 +911,9 @@ function bindReqButtons(c, r){
  *   4. 去掉 gas 相关字段，让钱包自己估算
  * ------------------------------------------------------------- */
 const TX_METHODS = ["eth_sendTransaction", "eth_signTransaction"];
+/* ?alignchain=1：把请求里的 chainId 强制对齐到钱包当前链
+   （用 chainId≠1 的 fork 链时必须开，否则钱包会拒绝"chainId 不匹配"） */
+const ALIGN_CHAIN = new URLSearchParams(location.search).get("alignchain") === "1";
 const GAS_FIELDS = ["gas", "gasPrice", "maxFeePerGas", "maxPriorityFeePerGas"];
 
 function hasPlaceholder(req){
@@ -948,7 +951,13 @@ async function prepareParams(req){
     try {
       const cid = await window.ethereum.request({ method: "eth_chainId", params: [] });
       if (tx.chainId && String(tx.chainId).toLowerCase() !== String(cid).toLowerCase()){
-        notes.push(`⚠ chainId 不一致：请求 ${tx.chainId} / 当前链 ${cid}`);
+        if (ALIGN_CHAIN){
+          notes.push(`chainId ${tx.chainId} → ${cid}（alignchain 已对齐）`);
+          tx.chainId = cid;
+        } else {
+          notes.push(`⚠ chainId 不一致：请求 ${tx.chainId} / 当前链 ${cid}`
+                     + `（地址栏加 ?alignchain=1 可自动对齐）`);
+        }
       }
     } catch (e) { /* ignore */ }
     // 4) 去掉 gas 字段
