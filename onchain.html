@@ -237,6 +237,7 @@
     <span class="pill" id="chainPill" title="点这里重新探测钱包所在链">链 <b id="chainTxt">探测中</b></span>
     <span class="pill" id="walletPill">钱包 <b id="walletTxt">检测中</b></span>
     <span class="pill" id="modePill">模式 <b id="modeTxt">dry_run</b></span>
+    <button class="btn" id="btnSelfTest" title="直连 RPC 自检（绕过钱包）">自检 RPC</button>
     <button class="btn" id="btnReconnect">重连</button>
   </div>
 </header>
@@ -594,6 +595,43 @@ async function probeChain(){
     if (pill) { pill.style.color = "var(--err)"; pill.title = "探测失败: " + msg; }
     log("er", "链探测失败: " + msg);
     console.error("[probeChain]", e);
+  }
+}
+
+/* ---------------------------------------------------------------
+ * RPC 自检：不经过钱包 provider，直接用 fetch 打 RPC
+ *   · 成功 → 手机网络能到隧道，问题在钱包的网络配置
+ *   · 失败 → 手机到隧道不通（DNS/墙/隧道挂了）
+ * 地址来源：?rpc=<url>，缺省用上次保存的
+ * ------------------------------------------------------------- */
+async function selfTestRpc(){
+  const q = new URLSearchParams(location.search);
+  const url = q.get("rpc") || (function(){ try { return localStorage.getItem("onchain_rpc_url") || ""; } catch(e){ return ""; } })();
+  if (!url){ log("er", "自检失败：地址栏加 ?rpc=https://你的隧道"); alert("请用带 ?rpc= 的地址打开，例如：\n?alignchain=1&rpc=https://xxx.trycloudflare.com"); return; }
+  try { localStorage.setItem("onchain_rpc_url", url); } catch(e) {}
+  log("in", "自检 RPC → " + url);
+  const t0 = Date.now();
+  try {
+    const r = await fetch(url, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({jsonrpc:"2.0", id:1, method:"eth_chainId", params:[]}),
+    });
+    const ms = Date.now() - t0;
+    const txt = await r.text();
+    let j = null; try { j = JSON.parse(txt); } catch(e) {}
+    if (j && j.result){
+      const id = parseInt(j.result, 16);
+      log("ok", `自检成功 ${ms}ms：RPC 返回 chainId=${id}`);
+      alert(`✅ 手机能连到这个 RPC\n\nHTTP ${r.status}  ${ms}ms\nchainId = ${id}\n\n说明网络是通的，问题在钱包网络配置。`);
+    } else {
+      log("er", `自检异常 HTTP ${r.status}：${txt.slice(0, 120)}`);
+      alert(`⚠ 能连上但返回异常\n\nHTTP ${r.status}\n${txt.slice(0, 200)}`);
+    }
+  } catch (e) {
+    const ms = Date.now() - t0;
+    log("er", `自检失败 ${ms}ms：${e.message || e}`);
+    alert(`❌ 手机连不上这个 RPC\n\n${e.message || e}\n\n${url}\n\n（DNS / 网络策略 / 隧道已断）`);
   }
 }
 
@@ -1078,6 +1116,7 @@ function doVerify(c){
  *  6. 顶栏
  * ===================================================================*/
 document.getElementById("chainPill").onclick = () => probeChain();
+document.getElementById("btnSelfTest").onclick = () => selfTestRpc();
 
 document.getElementById("btnReconnect").onclick = () => {
   const q = new URLSearchParams(location.search);
