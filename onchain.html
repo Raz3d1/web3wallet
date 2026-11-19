@@ -234,7 +234,7 @@
   </div>
   <div class="topbar-right">
     <span class="pill"><i class="dot" id="wsDot"></i><span id="wsAddr">未连接</span></span>
-    <span class="pill">链 <b>Ethereum</b></span>
+    <span class="pill" id="chainPill" title="点这里重新探测钱包所在链">链 <b id="chainTxt">探测中</b></span>
     <span class="pill" id="walletPill">钱包 <b id="walletTxt">检测中</b></span>
     <span class="pill" id="modePill">模式 <b id="modeTxt">dry_run</b></span>
     <button class="btn" id="btnReconnect">重连</button>
@@ -468,6 +468,7 @@ const WS = {
       this.send({type: "onchain_ready", account: ACCOUNT, chainId: 1});
       log("ok", "WS 已连接 " + url);
       try { localStorage.setItem("onchain_ws_url", url); } catch (e) {}
+      probeChain();
     };
     this.sock.onclose = () => {
       this.ready = false;
@@ -562,6 +563,37 @@ function selectCase(cid){
   for (const w of DATA.wallets){
     const c = (w.cases||[]).find(x => x.case_id === cid);
     if (c){ state.wallet = w.key; state.caseId = cid; renderWallets(); renderDetail(); return; }
+  }
+}
+
+/* 探测钱包当前连的链：chainId + 客户端类型 + 区块号
+   anvil/hardhat 会返回自己的 clientVersion → 一眼看出是不是 fork 链 */
+async function probeChain(){
+  const el = document.getElementById("chainTxt");
+  const pill = document.getElementById("chainPill");
+  if (!el) return;
+  if (!HAS_WALLET){
+    el.textContent = "无钱包"; if (pill) pill.style.color = "var(--ink-3)";
+    return;
+  }
+  el.textContent = "探测中…";
+  try {
+    const cid = await window.ethereum.request({ method: "eth_chainId", params: [] });
+    let ver = null, bn = null;
+    try { ver = await window.ethereum.request({ method: "web3_clientVersion", params: [] }); } catch (e) {}
+    try { bn = await window.ethereum.request({ method: "eth_blockNumber", params: [] }); } catch (e) {}
+    const id = parseInt(cid, 16);
+    const isFork = !!ver && /anvil|hardhat|ganache|reth-dev/i.test(String(ver));
+    const block = bn ? parseInt(bn, 16) : null;
+    el.textContent = `${id}${isFork ? " · FORK" : " · 非fork"}${block ? " · #" + block : ""}`;
+    if (pill) pill.style.color = isFork ? "var(--ok)" : "var(--warn)";
+    log("ok", `链探测: chainId=${id} client=${ver || "?"} block=${block === null ? "?" : block}`);
+  } catch (e) {
+    const msg = (e && (e.message || e.code)) || String(e);
+    el.textContent = "RPC 不可用";
+    if (pill) { pill.style.color = "var(--err)"; pill.title = "探测失败: " + msg; }
+    log("er", "链探测失败: " + msg);
+    console.error("[probeChain]", e);
   }
 }
 
@@ -840,6 +872,13 @@ function judgeBlock(c, r){
     <code>onchain_confirmed</code></span></div>` : ""}`;
 }
 
+const LOGS = [];
+function log(level, msg){
+  const t = new Date().toLocaleTimeString("zh-CN", {hour12:false});
+  LOGS.push({t, level, msg});
+  renderLog();
+}
+
 function renderLog(){
   const el = document.getElementById("log");
   if (!el) return;
@@ -1029,6 +1068,8 @@ function doVerify(c){
 /* =====================================================================
  *  6. 顶栏
  * ===================================================================*/
+document.getElementById("chainPill").onclick = () => probeChain();
+
 document.getElementById("btnReconnect").onclick = () => {
   const q = new URLSearchParams(location.search);
   const url = q.get("ws") || WS.url || "ws://127.0.0.1:8766";
@@ -1062,6 +1103,7 @@ document.getElementById("btnReconnect").onclick = () => {
 })();
 
 renderMode();
+probeChain();
 renderWallets();
 renderDetail();
 log("in", `页面加载完成 · 数据源 ${DATA.schema} · 用例 ${DATA.wallets.reduce((a,w)=>a+(w.total||0),0)} 条`);
