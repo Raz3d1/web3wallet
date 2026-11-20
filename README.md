@@ -5,7 +5,7 @@
 ![Ethers.js](https://img.shields.io/badge/Ethers.js-v5.0-orange)
 ![No Build](https://img.shields.io/badge/build-none%20%2F%20static-brightgreen)
 
-**在线实例**：<https://web3wallet.imzhzhuoli.workers.dev/>
+**在线实例**：<https://web3wallet.imzhzhuoli.workers.dev/>或<https://web3wallet.trade/>
 
 ---
 
